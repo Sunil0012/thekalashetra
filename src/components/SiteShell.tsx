@@ -12,11 +12,11 @@ export function SiteHeader() {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate({ to: "/", search: { q: q.trim() || undefined } as never });
+    navigate({ to: "/auctions", search: { q: q.trim() || undefined } as never });
   };
 
   const navItems = [
-    { to: "/", label: "Auctions" },
+    { to: "/auctions", label: "Auctions" },
     { to: "/artists", label: "Artists" },
     { to: "/sell", label: "Sell" },
     { to: "/about", label: "About" },
