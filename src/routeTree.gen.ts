@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutRouteImport } from './routes/about'
@@ -25,6 +27,16 @@ const SigninRoute = SigninRouteImport.update({
 const SellRoute = SellRouteImport.update({
   id: '/sell',
   path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuctionsRoute = AuctionsRouteImport.update({
+  id: '/auctions',
+  path: '/auctions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistsRoute = ArtistsRouteImport.update({
@@ -58,6 +70,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
+  '/auctions': typeof AuctionsRoute
+  '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/lot/$id': typeof LotIdRoute
@@ -67,6 +81,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
+  '/auctions': typeof AuctionsRoute
+  '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/lot/$id': typeof LotIdRoute
@@ -77,6 +93,8 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
+  '/auctions': typeof AuctionsRoute
+  '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/lot/$id': typeof LotIdRoute
@@ -88,6 +106,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/artists'
+    | '/auctions'
+    | '/checkout'
     | '/sell'
     | '/signin'
     | '/lot/$id'
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/artists'
+    | '/auctions'
+    | '/checkout'
     | '/sell'
     | '/signin'
     | '/lot/$id'
@@ -106,6 +128,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/artists'
+    | '/auctions'
+    | '/checkout'
     | '/sell'
     | '/signin'
     | '/lot/$id'
@@ -116,6 +140,8 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   ArtistsRoute: typeof ArtistsRoute
+  AuctionsRoute: typeof AuctionsRoute
+  CheckoutRoute: typeof CheckoutRoute
   SellRoute: typeof SellRoute
   SigninRoute: typeof SigninRoute
   LotIdRoute: typeof LotIdRoute
@@ -135,6 +161,20 @@ declare module '@tanstack/react-router' {
       path: '/sell'
       fullPath: '/sell'
       preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auctions': {
+      id: '/auctions'
+      path: '/auctions'
+      fullPath: '/auctions'
+      preLoaderRoute: typeof AuctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artists': {
@@ -180,6 +220,8 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   ArtistsRoute: ArtistsRoute,
+  AuctionsRoute: AuctionsRoute,
+  CheckoutRoute: CheckoutRoute,
   SellRoute: SellRoute,
   SigninRoute: SigninRoute,
   LotIdRoute: LotIdRoute,
