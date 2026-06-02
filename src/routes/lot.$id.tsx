@@ -140,7 +140,18 @@ function LotPage() {
               </button>
             </div>
             {error && <div className="text-[12px] text-live">{error}</div>}
-            {success && <div className="text-[12px] text-foreground border-l-2 border-foreground pl-3 py-1">{success}</div>}
+            {success && (
+              <div className="text-[12px] border-l-2 border-foreground pl-3 py-1 flex items-center justify-between gap-3">
+                <span>{success}</span>
+                <Link
+                  to="/checkout"
+                  search={{ lot: lot.id } as never}
+                  className="text-[11px] uppercase tracking-[0.18em] underline underline-offset-4 whitespace-nowrap"
+                >
+                  Pay now →
+                </Link>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               We will bid on your behalf in minimum increments up to your maximum.
               Bids are binding. Buyer's premium of 22% applies on the hammer price.
