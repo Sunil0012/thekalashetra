@@ -1,0 +1,132 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { toast } from "sonner";
+import { adminListAllSessions, adminUpsertSession, adminDeleteSession } from "@/lib/auction.functions";
+import { slugify } from "@/lib/format";
+
+export const Route = createFileRoute("/_authenticated/admin/sessions")({
+  head: () => ({ meta: [{ title: "Sessions — Admin" }] }),
+  component: AdminSessions,
+});
+
+function AdminSessions() {
+  const list = useServerFn(adminListAllSessions);
+  const upsert = useServerFn(adminUpsertSession);
+  const del = useServerFn(adminDeleteSession);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["admin", "sessions"] as const, queryFn: () => list() });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+
+  const m = useMutation({
+    mutationFn: (payload: any) => upsert({ data: payload }),
+    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["admin", "sessions"] }); setOpen(false); setEditing(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const md = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["admin", "sessions"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <main className="flex-1 mx-auto max-w-[1400px] w-full px-6 md:px-10 py-12">
+      <div className="flex items-end justify-between border-b border-border pb-6">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">· Auction Sessions</div>
+          <h1 className="mt-3 font-serif text-5xl">Sessions</h1>
+        </div>
+        <button onClick={() => { setEditing({}); setOpen(true); }} className="bg-foreground text-background px-5 py-3 text-[11px] uppercase tracking-[0.18em]">+ New session</button>
+      </div>
+
+      <div className="mt-8 grid gap-3">
+        {(data ?? []).map((s: any) => (
+          <div key={s.id} className="border border-border p-5 grid md:grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4">
+            <div>
+              <div className="font-serif text-xl">{s.title}</div>
+              <div className="mt-1 font-mono text-[11px] text-muted-foreground">/{s.slug}</div>
+            </div>
+            <div className="font-mono text-[11px]">{new Date(s.starts_at).toLocaleString()}</div>
+            <div className="font-mono text-[11px]">→ {new Date(s.ends_at).toLocaleString()}</div>
+            <div className={`font-mono text-[10px] uppercase tracking-[0.22em] px-3 py-1.5 border ${s.status === "live" ? "border-red-500 text-red-500" : "border-border text-muted-foreground"}`}>{s.status}</div>
+            <div className="flex gap-2">
+              <button onClick={() => { setEditing(s); setOpen(true); }} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-foreground">Edit</button>
+              <button onClick={() => { if (confirm("Delete this session and all its lots?")) md.mutate(s.id); }} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-red-500 hover:text-red-500">Delete</button>
+            </div>
+          </div>
+        ))}
+        {(data ?? []).length === 0 && <div className="text-center py-12 text-muted-foreground text-[13px]">No sessions yet — create your first.</div>}
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6" onClick={() => setOpen(false)}>
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const payload: any = {
+                title: String(fd.get("title") || ""),
+                slug: slugify(String(fd.get("slug") || fd.get("title") || "")),
+                description: String(fd.get("description") || ""),
+                cover_image: String(fd.get("cover_image") || "") || null,
+                starts_at: new Date(String(fd.get("starts_at"))).toISOString(),
+                ends_at: new Date(String(fd.get("ends_at"))).toISOString(),
+                status: String(fd.get("status")) as any,
+              };
+              if (editing?.id) payload.id = editing.id;
+              m.mutate(payload);
+            }}
+            className="bg-background border border-border w-full max-w-2xl p-8 space-y-5 max-h-[90vh] overflow-y-auto"
+          >
+            <h2 className="font-serif text-3xl">{editing?.id ? "Edit session" : "New session"}</h2>
+            <Field name="title" label="Title" defaultValue={editing?.title} required />
+            <Field name="slug" label="Slug (URL)" defaultValue={editing?.slug} placeholder="auto from title" />
+            <Field name="description" label="Description" defaultValue={editing?.description} textarea />
+            <Field name="cover_image" label="Cover image URL" defaultValue={editing?.cover_image} />
+            <div className="grid grid-cols-2 gap-4">
+              <Field name="starts_at" label="Starts at" type="datetime-local" defaultValue={editing?.starts_at ? toLocalInput(editing.starts_at) : ""} required />
+              <Field name="ends_at" label="Ends at" type="datetime-local" defaultValue={editing?.ends_at ? toLocalInput(editing.ends_at) : ""} required />
+            </div>
+            <div>
+              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status</label>
+              <select name="status" defaultValue={editing?.status ?? "upcoming"} className="w-full bg-transparent border-b border-border py-3">
+                {["draft", "upcoming", "live", "ended"].map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
+              </select>
+            </div>
+            <div className="flex justify-between items-center pt-4">
+              {editing?.id ? (
+                <a href={`/admin/sessions/${editing.id}/lots`} className="text-[11px] uppercase tracking-[0.18em] underline">Manage lots →</a>
+              ) : <span />}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setOpen(false)} className="border border-border px-5 py-3 text-[11px] uppercase tracking-[0.18em]">Cancel</button>
+                <button type="submit" disabled={m.isPending} className="bg-foreground text-background px-5 py-3 text-[11px] uppercase tracking-[0.18em]">{m.isPending ? "Saving…" : "Save"}</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function Field({ name, label, defaultValue, type = "text", required, placeholder, textarea }: any) {
+  return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">{label}</label>
+      {textarea ? (
+        <textarea name={name} defaultValue={defaultValue ?? ""} placeholder={placeholder} className="w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-foreground resize-none" rows={3} />
+      ) : (
+        <input name={name} type={type} defaultValue={defaultValue ?? ""} required={required} placeholder={placeholder} className="w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-foreground" />
+      )}
+    </div>
+  );
+}

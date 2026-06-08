@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -77,10 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Vermillion — Fine Art Auctions" },
-      { name: "description", content: "Curated fine art auctions. Place your maximum bid and let our system bid for you up to your ceiling." },
-      { property: "og:title", content: "Vermillion — Fine Art Auctions" },
-      { property: "og:description", content: "Curated fine art auctions, open daily." },
+      { title: "Kalashetra — Fine Art Auctions" },
+      { name: "description", content: "Kalashetra is a curated fine art auction house. Bid on sessions of paintings, sculpture, photography and prints." },
+      { property: "og:title", content: "Kalashetra — Fine Art Auctions" },
+      { property: "og:description", content: "Curated fine art auction sessions, hosted live." },
       { property: "og:type", content: "website" },
     ],
     links: [
@@ -112,11 +113,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    let mounted = true;
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      if (!mounted) return;
+      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      return () => sub.subscription.unsubscribe();
+    });
+    return () => { mounted = false; };
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster richColors position="top-right" theme="dark" />
     </QueryClientProvider>
   );
 }

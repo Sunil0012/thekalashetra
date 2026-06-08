@@ -8,7 +8,7 @@ import {
 } from "@/lib/auction-data";
 
 export const Route = createFileRoute("/account")({
-  head: () => ({ meta: [{ title: "Account — Vermillion" }] }),
+  head: () => ({ meta: [{ title: "Account — Kalashetra" }] }),
   component: AccountPage,
 });
 

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({ meta: [{ title: "About — Vermillion" }] }),
+  head: () => ({ meta: [{ title: "About — Kalashetra" }] }),
   component: AboutPage,
 });
 
@@ -23,7 +23,7 @@ function AboutPage() {
         </div>
         <div className="space-y-6 text-[15px] leading-relaxed">
           <p>
-            Vermillion is an online auction house dedicated to contemporary works on paper, painting,
+            Kalashetra is an online auction house dedicated to contemporary works on paper, painting,
             print, photography, and small-scale sculpture. We work directly with artists, estates, and
             private collectors to bring carefully chosen lots to a serious audience of new collectors.
           </p>
@@ -64,7 +64,7 @@ function AboutPage() {
               <div className="font-serif text-2xl">{p.name}</div>
               <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{p.role}</div>
               <div className="mt-2 text-[14px] text-muted-foreground">{p.focus}</div>
-              <a href="mailto:hello@vermillion.art" className="mt-3 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+              <a href="mailto:hello@kalashetra.art" className="mt-3 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
                 Get in touch
               </a>
             </div>

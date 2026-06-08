@@ -148,7 +148,7 @@ export function nextMinIncrement(current: number) {
 }
 
 // --- Local bid store (browser-only) ---
-const BID_KEY = "vermillion.bids.v1";
+const BID_KEY = "kalashetra.bids.v1";
 
 type BidState = Record<string, { bid: number; bidCount: number; yourMax?: number }>;
 
@@ -163,7 +163,7 @@ function readState(): BidState {
 function writeState(s: BidState) {
   if (typeof window === "undefined") return;
   localStorage.setItem(BID_KEY, JSON.stringify(s));
-  window.dispatchEvent(new Event("vermillion:bids"));
+  window.dispatchEvent(new Event("kalashetra:bids"));
 }
 
 export function getLotLive(id: string): { bid: number; bidCount: number; yourMax?: number } {
@@ -187,16 +187,16 @@ export function placeMaxBid(id: string, max: number): { ok: true; newBid: number
 export function subscribeBids(cb: () => void) {
   if (typeof window === "undefined") return () => {};
   const handler = () => cb();
-  window.addEventListener("vermillion:bids", handler);
+  window.addEventListener("kalashetra:bids", handler);
   window.addEventListener("storage", handler);
   return () => {
-    window.removeEventListener("vermillion:bids", handler);
+    window.removeEventListener("kalashetra:bids", handler);
     window.removeEventListener("storage", handler);
   };
 }
 
 // --- Watchlist ---
-const WATCH_KEY = "vermillion.watch.v1";
+const WATCH_KEY = "kalashetra.watch.v1";
 export function getWatchlist(): string[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(WATCH_KEY) || "[]"); } catch { return []; }
@@ -205,21 +205,21 @@ export function toggleWatch(id: string) {
   const list = new Set(getWatchlist());
   if (list.has(id)) list.delete(id); else list.add(id);
   localStorage.setItem(WATCH_KEY, JSON.stringify([...list]));
-  window.dispatchEvent(new Event("vermillion:watch"));
+  window.dispatchEvent(new Event("kalashetra:watch"));
 }
 export function subscribeWatch(cb: () => void) {
   if (typeof window === "undefined") return () => {};
   const handler = () => cb();
-  window.addEventListener("vermillion:watch", handler);
+  window.addEventListener("kalashetra:watch", handler);
   window.addEventListener("storage", handler);
   return () => {
-    window.removeEventListener("vermillion:watch", handler);
+    window.removeEventListener("kalashetra:watch", handler);
     window.removeEventListener("storage", handler);
   };
 }
 
 // --- Auth (mock, localStorage) ---
-const AUTH_KEY = "vermillion.auth.v1";
+const AUTH_KEY = "kalashetra.auth.v1";
 export type AuthUser = { name: string; email: string };
 export function getUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
@@ -227,19 +227,19 @@ export function getUser(): AuthUser | null {
 }
 export function signIn(user: AuthUser) {
   localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-  window.dispatchEvent(new Event("vermillion:auth"));
+  window.dispatchEvent(new Event("kalashetra:auth"));
 }
 export function signOut() {
   localStorage.removeItem(AUTH_KEY);
-  window.dispatchEvent(new Event("vermillion:auth"));
+  window.dispatchEvent(new Event("kalashetra:auth"));
 }
 export function subscribeAuth(cb: () => void) {
   if (typeof window === "undefined") return () => {};
   const handler = () => cb();
-  window.addEventListener("vermillion:auth", handler);
+  window.addEventListener("kalashetra:auth", handler);
   window.addEventListener("storage", handler);
   return () => {
-    window.removeEventListener("vermillion:auth", handler);
+    window.removeEventListener("kalashetra:auth", handler);
     window.removeEventListener("storage", handler);
   };
 }
