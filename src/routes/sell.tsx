@@ -5,7 +5,7 @@ import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 export const Route = createFileRoute("/sell")({
   head: () => ({
     meta: [
-      { title: "Sell at Vermillion — Consignment" },
+      { title: "Sell at Kalashetra — Consignment" },
       { name: "description", content: "Consign paintings, sculpture, photography, and works on paper for the next seasonal sale. Free valuations within five business days." },
     ],
   }),
@@ -110,7 +110,7 @@ function SellPage() {
               · Consign · Spring 2026
             </div>
             <h1 className="mt-8 font-serif text-5xl md:text-7xl tracking-tight leading-[0.95]">
-              Sell a work at <span className="italic">Vermillion.</span>
+              Sell a work at <span className="italic">Kalashetra.</span>
             </h1>
           </div>
           <p className="text-[15px] leading-relaxed text-muted-foreground max-w-md">
@@ -178,7 +178,7 @@ function SellPage() {
           <div className="mt-12 border-t border-border pt-6 space-y-3 text-[12px] text-muted-foreground leading-relaxed">
             <div><span className="font-mono text-foreground">12%</span> seller's commission, flat.</div>
             <div>No upfront listing fees.</div>
-            <div>Insured shipping arranged by Vermillion.</div>
+            <div>Insured shipping arranged by Kalashetra.</div>
           </div>
         </aside>
 
@@ -323,7 +323,7 @@ function SellPage() {
                     I'm open to setting a reserve below my estimated value if recommended by the specialist.
                   </Check>
                   <Check checked={form.termsOk} onChange={(v) => update("termsOk", v)} required>
-                    I agree to Vermillion's consignment terms and confirm I am the legal owner of this work.
+                    I agree to Kalashetra's consignment terms and confirm I am the legal owner of this work.
                   </Check>
                 </div>
               </>

@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -22,11 +21,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LotIdRouteImport } from './routes/lot.$id'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 
-const SigninRoute = SigninRouteImport.update({
-  id: '/signin',
-  path: '/signin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SellRoute = SellRouteImport.update({
   id: '/sell',
   path: '/sell',
@@ -91,7 +85,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
-  '/signin': typeof SigninRoute
   '/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
@@ -104,7 +97,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
-  '/signin': typeof SigninRoute
   '/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
@@ -119,7 +111,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
-  '/signin': typeof SigninRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
@@ -134,7 +125,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/sell'
-    | '/signin'
     | '/admin'
     | '/lot/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -147,7 +137,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/sell'
-    | '/signin'
     | '/admin'
     | '/lot/$id'
   id:
@@ -161,7 +150,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/sell'
-    | '/signin'
     | '/_authenticated/admin'
     | '/lot/$id'
   fileRoutesById: FileRoutesById
@@ -176,19 +164,11 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   SellRoute: typeof SellRoute
-  SigninRoute: typeof SigninRoute
   LotIdRoute: typeof LotIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signin': {
-      id: '/signin'
-      path: '/signin'
-      fullPath: '/signin'
-      preLoaderRoute: typeof SigninRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sell': {
       id: '/sell'
       path: '/sell'
@@ -290,7 +270,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   SellRoute: SellRoute,
-  SigninRoute: SigninRoute,
   LotIdRoute: LotIdRoute,
 }
 export const routeTree = rootRouteImport

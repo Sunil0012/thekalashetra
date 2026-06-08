@@ -3,7 +3,7 @@ import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { LOTS, getLotLive, formatBid } from "@/lib/auction-data";
 
 export const Route = createFileRoute("/artists")({
-  head: () => ({ meta: [{ title: "Artists — Vermillion" }] }),
+  head: () => ({ meta: [{ title: "Artists — Kalashetra" }] }),
   component: ArtistsPage,
 });
 

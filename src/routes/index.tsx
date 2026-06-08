@@ -8,9 +8,9 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Vermillion — Fine Art Auctions" },
+      { title: "Kalashetra — Fine Art Auctions" },
       { name: "description", content: "Curated seasonal sales of paintings, sculpture, photography, and works on paper. Bid online with confidence." },
-      { property: "og:title", content: "Vermillion — Fine Art Auctions" },
+      { property: "og:title", content: "Kalashetra — Fine Art Auctions" },
       { property: "og:description", content: "Curated seasonal sales of paintings, sculpture, photography, and works on paper." },
     ],
   }),
@@ -170,7 +170,7 @@ function HomePage() {
         <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-20 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-10 items-end">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] opacity-60">
-              Consign with Vermillion
+              Consign with Kalashetra
             </div>
             <h2 className="mt-4 font-serif text-4xl md:text-6xl tracking-tight leading-[1.05]">
               Sell a work in the next <span className="italic">seasonal catalogue.</span>

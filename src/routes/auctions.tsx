@@ -16,7 +16,7 @@ export const Route = createFileRoute("/auctions")({
     cat: typeof s.cat === "string" ? s.cat : undefined,
     sort: typeof s.sort === "string" ? s.sort : undefined,
   }),
-  head: () => ({ meta: [{ title: "Current Auctions — Vermillion" }] }),
+  head: () => ({ meta: [{ title: "Current Auctions — Kalashetra" }] }),
   component: AuctionsPage,
 });
 

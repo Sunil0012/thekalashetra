@@ -9,7 +9,7 @@ export const Route = createFileRoute("/checkout")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     lot: typeof s.lot === "string" ? s.lot : undefined,
   }),
-  head: () => ({ meta: [{ title: "Secure Checkout — Vermillion" }] }),
+  head: () => ({ meta: [{ title: "Secure Checkout — Kalashetra" }] }),
   component: CheckoutPage,
 });
 
@@ -347,7 +347,7 @@ function CheckoutPage() {
           </div>
 
           <div className="mt-6 text-[12px] text-muted-foreground leading-relaxed">
-            Payments are processed by a PCI-certified gateway. Vermillion never sees or stores your
+            Payments are processed by a PCI-certified gateway. Kalashetra never sees or stores your
             card or bank credentials.
           </div>
         </aside>
