@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
+import { Route as RequestAdminRouteImport } from './routes/request-admin'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuctionsRouteImport } from './routes/auctions'
@@ -20,10 +22,25 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LotIdRouteImport } from './routes/lot.$id'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminSessionsRouteImport } from './routes/_authenticated/admin/sessions'
+import { Route as AuthenticatedAdminSalesRouteImport } from './routes/_authenticated/admin/sales'
+import { Route as AuthenticatedAdminRequestsRouteImport } from './routes/_authenticated/admin/requests'
+import { Route as AuthenticatedAdminConsignmentsRouteImport } from './routes/_authenticated/admin/consignments'
 
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SellRoute = SellRouteImport.update({
   id: '/sell',
   path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestAdminRoute = RequestAdminRouteImport.update({
+  id: '/request-admin',
+  path: '/request-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -75,6 +92,34 @@ const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const AuthenticatedAdminSessionsRoute =
+  AuthenticatedAdminSessionsRouteImport.update({
+    id: '/sessions',
+    path: '/sessions',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminSalesRoute = AuthenticatedAdminSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const AuthenticatedAdminRequestsRoute =
+  AuthenticatedAdminRequestsRouteImport.update({
+    id: '/requests',
+    path: '/requests',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminConsignmentsRoute =
+  AuthenticatedAdminConsignmentsRouteImport.update({
+    id: '/consignments',
+    path: '/consignments',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,9 +129,16 @@ export interface FileRoutesByFullPath {
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
-  '/admin': typeof AuthenticatedAdminRouteRoute
+  '/signin': typeof SigninRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/lot/$id': typeof LotIdRoute
+  '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/requests': typeof AuthenticatedAdminRequestsRoute
+  '/admin/sales': typeof AuthenticatedAdminSalesRoute
+  '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,9 +148,15 @@ export interface FileRoutesByTo {
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
-  '/admin': typeof AuthenticatedAdminRouteRoute
+  '/signin': typeof SigninRoute
   '/lot/$id': typeof LotIdRoute
+  '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/requests': typeof AuthenticatedAdminRequestsRoute
+  '/admin/sales': typeof AuthenticatedAdminSalesRoute
+  '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,9 +168,16 @@ export interface FileRoutesById {
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteRoute
+  '/signin': typeof SigninRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/lot/$id': typeof LotIdRoute
+  '/_authenticated/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/_authenticated/admin/requests': typeof AuthenticatedAdminRequestsRoute
+  '/_authenticated/admin/sales': typeof AuthenticatedAdminSalesRoute
+  '/_authenticated/admin/sessions': typeof AuthenticatedAdminSessionsRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,9 +189,16 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/request-admin'
     | '/sell'
+    | '/signin'
     | '/admin'
     | '/lot/$id'
+    | '/admin/consignments'
+    | '/admin/requests'
+    | '/admin/sales'
+    | '/admin/sessions'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -136,9 +208,15 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/request-admin'
     | '/sell'
-    | '/admin'
+    | '/signin'
     | '/lot/$id'
+    | '/admin/consignments'
+    | '/admin/requests'
+    | '/admin/sales'
+    | '/admin/sessions'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -149,9 +227,16 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/request-admin'
     | '/sell'
+    | '/signin'
     | '/_authenticated/admin'
     | '/lot/$id'
+    | '/_authenticated/admin/consignments'
+    | '/_authenticated/admin/requests'
+    | '/_authenticated/admin/sales'
+    | '/_authenticated/admin/sessions'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,17 +248,33 @@ export interface RootRouteChildren {
   AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
+  RequestAdminRoute: typeof RequestAdminRoute
   SellRoute: typeof SellRoute
+  SigninRoute: typeof SigninRoute
   LotIdRoute: typeof LotIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sell': {
       id: '/sell'
       path: '/sell'
       fullPath: '/sell'
       preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-admin': {
+      id: '/request-admin'
+      path: '/request-admin'
+      fullPath: '/request-admin'
+      preLoaderRoute: typeof RequestAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -246,15 +347,72 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/sessions': {
+      id: '/_authenticated/admin/sessions'
+      path: '/sessions'
+      fullPath: '/admin/sessions'
+      preLoaderRoute: typeof AuthenticatedAdminSessionsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/sales': {
+      id: '/_authenticated/admin/sales'
+      path: '/sales'
+      fullPath: '/admin/sales'
+      preLoaderRoute: typeof AuthenticatedAdminSalesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/requests': {
+      id: '/_authenticated/admin/requests'
+      path: '/requests'
+      fullPath: '/admin/requests'
+      preLoaderRoute: typeof AuthenticatedAdminRequestsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/consignments': {
+      id: '/_authenticated/admin/consignments'
+      path: '/consignments'
+      fullPath: '/admin/consignments'
+      preLoaderRoute: typeof AuthenticatedAdminConsignmentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminConsignmentsRoute: typeof AuthenticatedAdminConsignmentsRoute
+  AuthenticatedAdminRequestsRoute: typeof AuthenticatedAdminRequestsRoute
+  AuthenticatedAdminSalesRoute: typeof AuthenticatedAdminSalesRoute
+  AuthenticatedAdminSessionsRoute: typeof AuthenticatedAdminSessionsRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminConsignmentsRoute: AuthenticatedAdminConsignmentsRoute,
+    AuthenticatedAdminRequestsRoute: AuthenticatedAdminRequestsRoute,
+    AuthenticatedAdminSalesRoute: AuthenticatedAdminSalesRoute,
+    AuthenticatedAdminSessionsRoute: AuthenticatedAdminSessionsRoute,
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRoute
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRoute,
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -269,7 +427,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
+  RequestAdminRoute: RequestAdminRoute,
   SellRoute: SellRoute,
+  SigninRoute: SigninRoute,
   LotIdRoute: LotIdRoute,
 }
 export const routeTree = rootRouteImport

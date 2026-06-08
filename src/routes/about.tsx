@@ -64,7 +64,7 @@ function AboutPage() {
               <div className="font-serif text-2xl">{p.name}</div>
               <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{p.role}</div>
               <div className="mt-2 text-[14px] text-muted-foreground">{p.focus}</div>
-              <a href="mailto:hello@vermillion.art" className="mt-3 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+              <a href="mailto:hello@kalashetra.art" className="mt-3 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
                 Get in touch
               </a>
             </div>
