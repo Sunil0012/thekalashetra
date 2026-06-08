@@ -110,7 +110,7 @@ export function SiteFooter() {
         <div>
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground mb-3">Contact</div>
           <ul className="space-y-2 text-[13px]">
-            <li><a href="mailto:sunilnaikkethavath9@gmail.com" className="hover:opacity-70">sunilnaikkethavath9@gmail.com</a></li>
+            <li><a href="mailto:sunilnaikkethavath@gmail.com" className="hover:opacity-70">sunilnaikkethavath@gmail.com</a></li>
           </ul>
         </div>
       </div>

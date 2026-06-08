@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const OWNER_EMAIL = "sunilnaikkethavath9@gmail.com"; // owner inbox (in-app notifications)
+const OWNER_EMAIL = "sunilnaikkethavath@gmail.com"; // owner inbox (in-app notifications)
 
 // =================== PUBLIC READS ===================
 
