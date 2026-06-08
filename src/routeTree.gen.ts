@@ -12,12 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LotIdRouteImport } from './routes/lot.$id'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
@@ -32,6 +35,11 @@ const SellRoute = SellRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuctionsRoute = AuctionsRouteImport.update({
@@ -54,6 +62,10 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,6 +76,11 @@ const LotIdRoute = LotIdRouteImport.update({
   path: '/lot/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -71,9 +88,11 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
+  '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
+  '/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,21 +101,26 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
+  '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
+  '/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
+  '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRoute
   '/lot/$id': typeof LotIdRoute
 }
 export interface FileRouteTypes {
@@ -107,9 +131,11 @@ export interface FileRouteTypes {
     | '/account'
     | '/artists'
     | '/auctions'
+    | '/auth'
     | '/checkout'
     | '/sell'
     | '/signin'
+    | '/admin'
     | '/lot/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -118,29 +144,36 @@ export interface FileRouteTypes {
     | '/account'
     | '/artists'
     | '/auctions'
+    | '/auth'
     | '/checkout'
     | '/sell'
     | '/signin'
+    | '/admin'
     | '/lot/$id'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/about'
     | '/account'
     | '/artists'
     | '/auctions'
+    | '/auth'
     | '/checkout'
     | '/sell'
     | '/signin'
+    | '/_authenticated/admin'
     | '/lot/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   ArtistsRoute: typeof ArtistsRoute
   AuctionsRoute: typeof AuctionsRoute
+  AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   SellRoute: typeof SellRoute
   SigninRoute: typeof SigninRoute
@@ -168,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auctions': {
@@ -198,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -212,15 +259,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   ArtistsRoute: ArtistsRoute,
   AuctionsRoute: AuctionsRoute,
+  AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   SellRoute: SellRoute,
   SigninRoute: SigninRoute,
@@ -229,3 +296,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
