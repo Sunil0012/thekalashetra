@@ -77,10 +77,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Vermillion — Fine Art Auctions" },
-      { name: "description", content: "Curated fine art auctions. Place your maximum bid and let our system bid for you up to your ceiling." },
-      { property: "og:title", content: "Vermillion — Fine Art Auctions" },
-      { property: "og:description", content: "Curated fine art auctions, open daily." },
+      { title: "Kalashetra — Fine Art Auctions" },
+      { name: "description", content: "Kalashetra is a curated fine art auction house. Bid on sessions of paintings, sculpture, photography and prints." },
+      { property: "og:title", content: "Kalashetra — Fine Art Auctions" },
+      { property: "og:description", content: "Curated fine art auction sessions, hosted live." },
       { property: "og:type", content: "website" },
     ],
     links: [
