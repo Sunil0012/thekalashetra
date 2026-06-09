@@ -47,6 +47,23 @@ export const listFeaturedLots = createServerFn({ method: "GET" }).handler(async 
   return lots ?? [];
 });
 
+export const getCatalogue = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: sessions } = await supabaseAdmin
+    .from("auction_sessions").select("*")
+    .in("status", ["live", "upcoming"])
+    .order("starts_at");
+  const liveIds = (sessions ?? []).filter((s: any) => s.status === "live").map((s: any) => s.id);
+  let lots: any[] = [];
+  if (liveIds.length) {
+    const { data } = await supabaseAdmin.from("lots").select("*").in("session_id", liveIds).order("lot_number");
+    lots = data ?? [];
+  }
+  const sessionsById: Record<string, any> = {};
+  for (const s of sessions ?? []) sessionsById[s.id] = s;
+  return { sessions: sessions ?? [], lots, sessionsById };
+});
+
 // =================== BIDDING ===================
 
 export const placeBid = createServerFn({ method: "POST" })
@@ -299,6 +316,52 @@ export const adminListCommissions = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin.from("commissions").select("*, lots(title, artist)").order("created_at", { ascending: false });
     return data ?? [];
+  });
+
+export const adminListLots = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { sessionId: string }) => z.object({ sessionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: session } = await supabaseAdmin.from("auction_sessions").select("*").eq("id", data.sessionId).maybeSingle();
+    const { data: lots } = await supabaseAdmin.from("lots").select("*").eq("session_id", data.sessionId).order("lot_number");
+    return { session, lots: lots ?? [] };
+  });
+
+export const adminListUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profiles } = await supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false });
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
+    return (profiles ?? []).map((p: any) => ({
+      ...p,
+      roles: (roles ?? []).filter((r: any) => r.user_id === p.id).map((r: any) => r.role),
+    }));
+  });
+
+export const adminSetRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; grant: boolean }) =>
+    z.object({ userId: z.string().uuid(), grant: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: meRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", context.userId);
+    const isOwner = (meRoles ?? []).some((r: any) => r.role === "owner");
+    if (!isOwner) throw new Error("Only the owner can change roles.");
+    const { data: targetRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId);
+    if ((targetRoles ?? []).some((r: any) => r.role === "owner")) throw new Error("Cannot change the owner's roles.");
+    if (data.grant) {
+      const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: "admin" });
+      if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId).eq("role", "admin");
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
   });
 
 // =================== USER ACCOUNT ===================
