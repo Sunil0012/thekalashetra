@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -98,7 +98,7 @@ function AdminSessions() {
             </div>
             <div className="flex justify-between items-center pt-4">
               {editing?.id ? (
-                <a href={`/admin/sessions/${editing.id}/lots`} className="text-[11px] uppercase tracking-[0.18em] underline">Manage lots →</a>
+                <Link to="/admin/sessions/$id/lots" params={{ id: editing.id }} className="text-[11px] uppercase tracking-[0.18em] underline">Manage lots →</Link>
               ) : <span />}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setOpen(false)} className="border border-border px-5 py-3 text-[11px] uppercase tracking-[0.18em]">Cancel</button>
