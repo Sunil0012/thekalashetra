@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import {
-  LOTS, formatBid, formatCountdown, getLotLive, subscribeBids,
-} from "@/lib/auction-data";
+import { getCatalogue } from "@/lib/auction.functions";
+import { formatBid, formatCountdown } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,14 +19,20 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const [, force] = useState(0);
-  useEffect(() => subscribeBids(() => force((n) => n + 1)), []);
+  useNow(30_000);
+  const fn = useServerFn(getCatalogue);
+  const { data, isLoading } = useQuery({ queryKey: ["catalogue"], queryFn: () => fn() });
 
-  const featured = LOTS[4]; // Adaeze Okoro — Horizon, Late
-  const live = getLotLive(featured.id);
-  const selected = LOTS.filter((l) => l.id !== featured.id).slice(0, 6);
-  const lotsCount = LOTS.length;
-  const artistsCount = new Set(LOTS.map((l) => l.artist)).size;
+  const lots = data?.lots ?? [];
+  const sessions = data?.sessions ?? [];
+  const sessionsById: Record<string, any> = data?.sessionsById ?? {};
+  const liveSessions = sessions.filter((s: any) => s.status === "live");
+  const upcoming = sessions.filter((s: any) => s.status === "upcoming");
+
+  const featured = lots[0];
+  const selected = lots.slice(1, 7);
+  const artistsCount = new Set(lots.map((l: any) => l.artist)).size;
+  const soldCount = lots.filter((l: any) => l.status === "sold").length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -35,7 +42,7 @@ function HomePage() {
       <section className="mx-auto max-w-[1400px] px-6 md:px-10 pt-16 md:pt-24 pb-16 md:pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-            · Current Sale · Spring 2026
+            {liveSessions.length > 0 ? <>· Live Now · {liveSessions[0].title}</> : "· Fine Art Auctions"}
           </div>
           <h1 className="mt-8 font-serif text-5xl md:text-7xl leading-[0.95] tracking-tight">
             Modern Masters,
@@ -43,9 +50,9 @@ function HomePage() {
             <span className="italic font-light">Curated Editions</span>
           </h1>
           <p className="mt-8 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            Ninety-two works from estates, ateliers, and private collections across four
-            continents. Color-field painters, restrained draftsmen, and the rare ceramic —
-            presented with full provenance, condition, and care.
+            Works from estates, ateliers, and private collections — presented with full
+            provenance, condition, and care. Every sale is a timed session: bid until the
+            clock runs out.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-6">
@@ -56,136 +63,137 @@ function HomePage() {
               View Catalogue
             </Link>
             <Link
-              to="/about"
+              to="/auctions/upcoming"
               className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition-colors"
             >
-              How it works →
+              Upcoming sessions →
             </Link>
           </div>
 
           <div className="mt-16 grid grid-cols-3 gap-8 border-t border-border pt-8 max-w-md">
-            <Stat n={lotsCount} label="Live Lots" />
+            <Stat n={lots.length} label="Live Lots" />
             <Stat n={artistsCount} label="Artists" />
-            <Stat n={0} label="Sold to Date" />
+            <Stat n={soldCount} label="Sold" />
           </div>
         </div>
 
         {/* Featured lot */}
-        <Link to="/lot/$id" params={{ id: featured.id }} className="group block">
-          <div className="aspect-[4/5] overflow-hidden bg-muted">
-            <img
-              src={featured.image}
-              alt={`${featured.title} by ${featured.artist}`}
-              width={1024}
-              height={1280}
-              className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
-            />
-          </div>
-          <div className="mt-6 flex items-end justify-between gap-6">
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Featured Lot · {featured.id}
-              </div>
-              <h2 className="mt-3 font-serif text-2xl md:text-3xl leading-tight">
-                {featured.artist} <span className="text-muted-foreground">—</span>{" "}
-                <span className="italic">{featured.title}</span>
-              </h2>
+        {featured ? (
+          <Link to="/lot/$id" params={{ id: featured.id }} className="group block">
+            <div className="aspect-[4/5] overflow-hidden bg-muted">
+              <img
+                src={featured.image_url ?? ""}
+                alt={`${featured.title} by ${featured.artist}`}
+                width={1024}
+                height={1280}
+                className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
+              />
             </div>
-            <div className="text-right shrink-0">
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Current
+            <div className="mt-6 flex items-end justify-between gap-6">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Featured Lot · No. {featured.lot_number}
+                </div>
+                <h2 className="mt-3 font-serif text-2xl md:text-3xl leading-tight">
+                  {featured.artist} <span className="text-muted-foreground">—</span>{" "}
+                  <span className="italic">{featured.title}</span>
+                </h2>
               </div>
-              <div className="mt-1.5 font-serif text-2xl">{formatBid(live.bid)}</div>
-              <div className="mt-1 font-mono text-[11px] text-live">
-                {formatCountdown(featured.endsInMin)}
+              <div className="text-right shrink-0">
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Current</div>
+                <div className="mt-1.5 font-serif text-2xl">{formatBid(featured.current_bid)}</div>
+                <div className="mt-1 font-mono text-[11px] text-live">
+                  {formatCountdown(sessionsById[featured.session_id]?.ends_at)}
+                </div>
               </div>
             </div>
+          </Link>
+        ) : (
+          <div className="aspect-[4/5] border border-border flex flex-col items-center justify-center text-center p-10">
+            {isLoading ? (
+              <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Loading catalogue…</div>
+            ) : (
+              <>
+                <p className="font-serif text-2xl italic">No live session at the moment.</p>
+                <Link to="/auctions/upcoming" className="mt-6 text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+                  See upcoming auctions →
+                </Link>
+              </>
+            )}
           </div>
-        </Link>
+        )}
       </section>
 
       {/* SELECTED WORKS */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-16 md:py-24">
-          <div className="flex items-end justify-between gap-6 mb-12">
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Selected Works
+      {selected.length > 0 && (
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-16 md:py-24">
+            <div className="flex items-end justify-between gap-6 mb-12">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Selected Works</div>
+                <h2 className="mt-4 font-serif text-4xl md:text-5xl tracking-tight">Now at Auction</h2>
               </div>
-              <h2 className="mt-4 font-serif text-4xl md:text-5xl tracking-tight">
-                Now at Auction
-              </h2>
+              <Link to="/auctions" className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground shrink-0">
+                Full catalogue →
+              </Link>
             </div>
-            <Link
-              to="/auctions"
-              className="hidden md:inline-block text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground border-b border-border pb-1"
-            >
-              All Lots →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
-            {selected.map((lot) => {
-              const l = getLotLive(lot.id);
-              return (
-                <Link key={lot.id} to="/lot/$id" params={{ id: lot.id }} className="group">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
+              {selected.map((l: any) => (
+                <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group block">
                   <div className="aspect-square overflow-hidden bg-muted">
                     <img
-                      src={lot.image}
-                      alt={lot.title}
+                      src={l.image_url ?? ""}
+                      alt={`${l.title} by ${l.artist}`}
                       loading="lazy"
                       width={1024}
                       height={1024}
-                      className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-[1.03]"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                     />
                   </div>
-                  <div className="mt-5 flex items-center justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Lot · {lot.id}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-live animate-pulse" />
-                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-live">Live</span>
-                    </span>
-                  </div>
-                  <h3 className="mt-3 font-serif text-2xl leading-tight">{lot.artist}</h3>
-                  <p className="font-serif italic text-[15px] text-muted-foreground">
-                    {lot.title}, {lot.year}
-                  </p>
-                  <div className="mt-4 flex items-end justify-between border-t border-border pt-3">
-                    <span className="font-serif text-lg">{formatBid(l.bid)}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {formatCountdown(lot.endsInMin)}
-                    </span>
+                  <div className="mt-5 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-serif text-lg leading-snug">{l.artist}</div>
+                      <div className="font-serif italic text-[13px] text-muted-foreground">{l.title}{l.year ? `, ${l.year}` : ""}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-serif text-lg">{formatBid(l.current_bid)}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">{l.bid_count} bids</div>
+                    </div>
                   </div>
                 </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CONSIGN BAND */}
-      <section className="border-t border-border bg-foreground text-background">
-        <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-20 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-10 items-end">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] opacity-60">
-              Consign with Kalashetra
+              ))}
             </div>
-            <h2 className="mt-4 font-serif text-4xl md:text-6xl tracking-tight leading-[1.05]">
-              Sell a work in the next <span className="italic">seasonal catalogue.</span>
-            </h2>
           </div>
-          <div className="flex md:justify-end">
-            <Link
-              to="/sell"
-              className="border border-background px-7 py-4 text-[11px] font-medium uppercase tracking-[0.22em] hover:bg-background hover:text-foreground transition-colors"
-            >
-              Submit a work →
-            </Link>
+        </section>
+      )}
+
+      {/* UPCOMING SESSIONS */}
+      {upcoming.length > 0 && (
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-16">
+            <div className="flex items-end justify-between gap-6 mb-10">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Calendar</div>
+                <h2 className="mt-4 font-serif text-3xl md:text-4xl tracking-tight">Upcoming Sessions</h2>
+              </div>
+              <Link to="/auctions/upcoming" className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground shrink-0">
+                All upcoming →
+              </Link>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              {upcoming.slice(0, 2).map((s: any) => (
+                <Link key={s.id} to="/auctions/upcoming" className="border border-border p-8 hover:border-foreground transition-colors block">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Opens in {formatCountdown(s.starts_at)}</div>
+                  <div className="mt-3 font-serif text-2xl">{s.title}</div>
+                  <div className="mt-3 font-mono text-[11px] text-muted-foreground">
+                    {new Date(s.starts_at).toLocaleDateString(undefined, { dateStyle: "long" })}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <SiteFooter />
     </div>
@@ -195,10 +203,8 @@ function HomePage() {
 function Stat({ n, label }: { n: number; label: string }) {
   return (
     <div>
-      <div className="font-serif text-4xl">{n}</div>
-      <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        {label}
-      </div>
+      <div className="font-serif text-3xl">{n}</div>
+      <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
     </div>
   );
 }

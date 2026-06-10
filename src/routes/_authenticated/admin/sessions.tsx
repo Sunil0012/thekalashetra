@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { adminListAllSessions, adminUpsertSession, adminDeleteSession } from "@/lib/auction.functions";
-import { slugify } from "@/lib/format";
+import { adminListAllSessions, adminUpsertSession, adminDeleteSession, adminSetSessionStatus } from "@/lib/auction.functions";
+import { slugify, formatCountdown } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
 
 export const Route = createFileRoute("/_authenticated/admin/sessions")({
   head: () => ({ meta: [{ title: "Sessions — Admin" }] }),
@@ -12,22 +13,34 @@ export const Route = createFileRoute("/_authenticated/admin/sessions")({
 });
 
 function AdminSessions() {
+  useNow(30_000);
   const list = useServerFn(adminListAllSessions);
   const upsert = useServerFn(adminUpsertSession);
   const del = useServerFn(adminDeleteSession);
+  const setStatus = useServerFn(adminSetSessionStatus);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["admin", "sessions"] as const, queryFn: () => list() });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "sessions"] });
+    qc.invalidateQueries({ queryKey: ["catalogue"] });
+  };
+
   const m = useMutation({
     mutationFn: (payload: any) => upsert({ data: payload }),
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["admin", "sessions"] }); setOpen(false); setEditing(null); },
+    onSuccess: () => { toast.success("Saved"); invalidate(); setOpen(false); setEditing(null); },
     onError: (e: any) => toast.error(e.message),
   });
   const md = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
-    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["admin", "sessions"] }); },
+    onSuccess: () => { toast.success("Deleted"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const ms = useMutation({
+    mutationFn: (p: { id: string; status: "draft" | "upcoming" | "live" | "ended" }) => setStatus({ data: p }),
+    onSuccess: (_d, p) => { toast.success(`Session is now ${p.status}`); invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -43,15 +56,34 @@ function AdminSessions() {
 
       <div className="mt-8 grid gap-3">
         {(data ?? []).map((s: any) => (
-          <div key={s.id} className="border border-border p-5 grid md:grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4">
+          <div key={s.id} className="border border-border p-5 grid lg:grid-cols-[1fr_auto_auto_auto] items-center gap-4">
             <div>
               <div className="font-serif text-xl">{s.title}</div>
-              <div className="mt-1 font-mono text-[11px] text-muted-foreground">/{s.slug}</div>
+              <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                /{s.slug} · {new Date(s.starts_at).toLocaleString()} → {new Date(s.ends_at).toLocaleString()}
+              </div>
             </div>
-            <div className="font-mono text-[11px]">{new Date(s.starts_at).toLocaleString()}</div>
-            <div className="font-mono text-[11px]">→ {new Date(s.ends_at).toLocaleString()}</div>
-            <div className={`font-mono text-[10px] uppercase tracking-[0.22em] px-3 py-1.5 border ${s.status === "live" ? "border-red-500 text-red-500" : "border-border text-muted-foreground"}`}>{s.status}</div>
+            <div className="text-right">
+              <div className={`inline-block font-mono text-[10px] uppercase tracking-[0.22em] px-3 py-1.5 border ${s.status === "live" ? "border-red-500 text-red-500" : "border-border text-muted-foreground"}`}>{s.status}</div>
+              <div className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+                {s.status === "live" ? <>Ends in <span className="text-red-500">{formatCountdown(s.ends_at)}</span></>
+                  : s.status === "upcoming" ? <>Starts in {formatCountdown(s.starts_at)}</>
+                  : s.status === "ended" ? "Closed" : "Not published"}
+              </div>
+            </div>
             <div className="flex gap-2">
+              {(s.status === "upcoming" || s.status === "draft") && (
+                <button onClick={() => ms.mutate({ id: s.id, status: "live" })} disabled={ms.isPending} className="border border-red-500 text-red-500 px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:bg-red-500 hover:text-background transition-colors">Go live</button>
+              )}
+              {s.status === "live" && (
+                <button onClick={() => { if (confirm("End this session now? Bidding will close immediately.")) ms.mutate({ id: s.id, status: "ended" }); }} disabled={ms.isPending} className="border border-foreground px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors">End now</button>
+              )}
+              {s.status === "ended" && (
+                <button onClick={() => ms.mutate({ id: s.id, status: "upcoming" })} disabled={ms.isPending} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-foreground">Reopen as upcoming</button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Link to="/admin/sessions/$id/lots" params={{ id: s.id }} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-foreground">Lots</Link>
               <button onClick={() => { setEditing(s); setOpen(true); }} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-foreground">Edit</button>
               <button onClick={() => { if (confirm("Delete this session and all its lots?")) md.mutate(s.id); }} className="border border-border px-3 py-2 text-[10px] uppercase tracking-[0.18em] hover:border-red-500 hover:text-red-500">Delete</button>
             </div>

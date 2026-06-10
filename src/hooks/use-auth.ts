@@ -13,23 +13,29 @@ export function useAuth() {
     let mounted = true;
 
     const loadRoles = async (uid: string) => {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-      if (mounted) setRoles((data ?? []).map((r: any) => r.role as Role));
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      if (mounted && !error) setRoles((data ?? []).map((r: any) => r.role as Role));
     };
 
-    supabase.auth.getSession().then(({ data }) => {
+    // Initial session — only mark loading complete AFTER roles are fetched,
+    // otherwise admin gates evaluate isAdmin=false and kick admins out.
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       const u = data.session?.user ?? null;
       setUser(u);
-      if (u) loadRoles(u.id);
-      setLoading(false);
+      if (u) await loadRoles(u.id);
+      if (mounted) setLoading(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) loadRoles(u.id);
-      else setRoles([]);
+      if (u) {
+        // defer Supabase calls out of the auth callback to avoid deadlocks
+        setTimeout(() => loadRoles(u.id), 0);
+      } else {
+        setRoles([]);
+      }
     });
 
     return () => {
