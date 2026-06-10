@@ -425,3 +425,18 @@ async function tryGetUserId(): Promise<string | null> {
 
 // keep OWNER_EMAIL referenced so it isn't tree-shaken away as dead — used in docs/comments
 void OWNER_EMAIL;
+
+// =================== ADMIN: QUICK STATUS ===================
+
+export const adminSetSessionStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; status: "draft" | "upcoming" | "live" | "ended" }) =>
+    z.object({ id: z.string().uuid(), status: z.enum(["draft", "upcoming", "live", "ended"]) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("auction_sessions").update({ status: data.status }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
