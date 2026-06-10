@@ -1,80 +1,98 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import {
-  LOTS, formatBid, formatCountdown, getLotLive, placeMaxBid,
-  nextMinIncrement, subscribeBids, getWatchlist, toggleWatch, subscribeWatch,
-  getUser,
-} from "@/lib/auction-data";
+import { getLot, placeBid } from "@/lib/auction.functions";
+import { formatBid, formatCountdown, nextMinIncrement } from "@/lib/format";
+import { useAuth } from "@/hooks/use-auth";
+import { useNow } from "@/hooks/use-now";
 
 export const Route = createFileRoute("/lot/$id")({
   component: LotPage,
-  notFoundComponent: () => (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="font-serif text-4xl">Lot not found</h1>
-        <Link to="/" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">Back to auctions</Link>
-      </div>
-    </div>
-  ),
 });
+
+function NotFoundLot() {
+  return (
+    <div className="min-h-screen bg-background">
+      <SiteHeader />
+      <div className="mx-auto max-w-[1400px] px-10 py-32 text-center">
+        <h1 className="font-serif text-5xl">Lot not found</h1>
+        <Link to="/auctions" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">Back to auctions</Link>
+      </div>
+      <SiteFooter />
+    </div>
+  );
+}
 
 function LotPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const lot = LOTS.find((l) => l.id === id);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  useNow(1000);
 
-  const [, force] = useState(0);
-  useEffect(() => subscribeBids(() => force((n) => n + 1)), []);
-  const [watch, setWatch] = useState<string[]>(getWatchlist());
-  useEffect(() => subscribeWatch(() => setWatch(getWatchlist())), []);
+  const fetchLot = useServerFn(getLot);
+  const bidFn = useServerFn(placeBid);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["lot", id],
+    queryFn: () => fetchLot({ data: { id } }),
+    refetchInterval: 15_000,
+    retry: false,
+  });
 
-  const [maxBid, setMaxBid] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (!lot) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <div className="mx-auto max-w-[1400px] px-10 py-32 text-center">
-          <h1 className="font-serif text-5xl">Lot not found</h1>
-          <Link to="/" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">Back to auctions</Link>
-        </div>
-        <SiteFooter />
+        <div className="py-40 text-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Loading lot…</div>
       </div>
     );
   }
+  if (isError || !data?.lot) return <NotFoundLot />;
 
-  const live = getLotLive(lot.id);
-  const min = live.bid + nextMinIncrement(live.bid);
-  const isWatched = watch.includes(lot.id);
+  const { lot, session, bids } = data as any;
+  const isLive = session?.status === "live";
+  const isEnded = session?.status === "ended" || lot.status === "sold";
+  const current = Number(lot.current_bid || lot.starting_bid || 0);
+  const minNext = current + nextMinIncrement(current);
+  const iAmHighBidder = !!user && bids?.[0]?.user_id === user.id;
+  const wonByMe = isEnded && lot.status !== "sold" && iAmHighBidder;
+  const boughtByMe = !!user && lot.status === "sold" && lot.sold_to === user.id;
 
-  const handleBid = (e: React.FormEvent) => {
+  const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    if (!getUser()) {
-      navigate({ to: "/signin", search: { redirect: `/lot/${lot.id}` } as never });
+    if (!user) {
+      navigate({ to: "/auth", search: { redirect: `/lot/${lot.id}` } as never });
       return;
     }
-    const n = Number(maxBid.replace(/[^0-9.]/g, ""));
-    if (!n || Number.isNaN(n)) { setError("Enter a numeric amount."); return; }
-    const result = placeMaxBid(lot.id, n);
-    if (!result.ok) { setError(result.error); return; }
-    setSuccess(`Max bid placed at ${formatBid(result.newBid)}. You're the high bidder.`);
-    setMaxBid("");
+    const n = Number(amount.replace(/[^0-9.]/g, ""));
+    if (!n || Number.isNaN(n)) { toast.error("Enter a numeric amount."); return; }
+    if (n < minNext) { toast.error(`Minimum next bid is ${formatBid(minNext)}.`); return; }
+    setBusy(true);
+    try {
+      await bidFn({ data: { lotId: lot.id, amount: n } });
+      toast.success(`Bid placed at ${formatBid(n)} — you're the high bidder.`);
+      setAmount("");
+      qc.invalidateQueries({ queryKey: ["lot", id] });
+      qc.invalidateQueries({ queryKey: ["catalogue"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Bid failed");
+    } finally {
+      setBusy(false);
+    }
   };
-
-  // Related lots
-  const related = LOTS.filter((l) => l.id !== lot.id && l.category === lot.category).slice(0, 4);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
 
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 pt-8">
-        <Link to="/" className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
+        <Link to="/auctions" className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
           ← Back to auctions
         </Link>
       </div>
@@ -82,7 +100,7 @@ function LotPage() {
       <article className="mx-auto max-w-[1400px] px-6 md:px-10 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
         <div className="bg-muted aspect-square overflow-hidden">
           <img
-            src={lot.image}
+            src={lot.image_url ?? ""}
             alt={`${lot.title} by ${lot.artist}`}
             width={1024}
             height={1024}
@@ -93,122 +111,123 @@ function LotPage() {
         <div>
           <div className="flex items-center justify-between">
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Lot · {lot.id} · {lot.category}
+              Lot {lot.lot_number} · {lot.category ?? "—"} · {session?.title}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-live animate-pulse" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-live">Live</span>
+              {isLive && <span className="h-1.5 w-1.5 rounded-full bg-live animate-pulse" />}
+              <span className={"font-mono text-[10px] uppercase tracking-[0.18em] " + (isLive ? "text-live" : "text-muted-foreground")}>
+                {lot.status === "sold" ? "Sold" : session?.status ?? "—"}
+              </span>
             </div>
           </div>
 
-          <h1 className="mt-5 font-serif text-5xl md:text-6xl tracking-tight">{lot.artist}</h1>
-          <p className="mt-2 font-serif italic text-2xl text-muted-foreground">{lot.title}, {lot.year}</p>
+          <h1 className="mt-6 font-serif text-4xl md:text-5xl leading-tight">
+            {lot.artist}
+            <br />
+            <span className="italic font-light">{lot.title}{lot.year ? `, ${lot.year}` : ""}</span>
+          </h1>
 
-          <div className="mt-8 border-y border-border py-6 grid grid-cols-2 gap-6">
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Current Bid</div>
-              <div className="mt-1.5 font-serif text-3xl">{formatBid(live.bid)}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground">{live.bidCount} bids</div>
-            </div>
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Time Remaining</div>
-              <div className="mt-1.5 font-serif text-3xl">{formatCountdown(lot.endsInMin)}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground">Starting bid · {formatBid(lot.startingBid)}</div>
-            </div>
-          </div>
+          <dl className="mt-8 grid grid-cols-2 gap-y-3 text-[13px] border-y border-border py-6">
+            {lot.medium && (<><dt className="text-muted-foreground">Medium</dt><dd>{lot.medium}</dd></>)}
+            {lot.dimensions && (<><dt className="text-muted-foreground">Dimensions</dt><dd>{lot.dimensions}</dd></>)}
+            {lot.provenance && (<><dt className="text-muted-foreground">Provenance</dt><dd>{lot.provenance}</dd></>)}
+            <dt className="text-muted-foreground">Starting bid</dt><dd>{formatBid(lot.starting_bid)}</dd>
+          </dl>
 
-          <form onSubmit={handleBid} className="mt-8 space-y-3">
-            <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Your maximum bid (min {formatBid(min)})
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-muted-foreground">$</span>
-                <input
-                  value={maxBid}
-                  onChange={(e) => setMaxBid(e.target.value)}
-                  inputMode="numeric"
-                  placeholder={String(min)}
-                  className="w-full border border-border bg-background pl-9 pr-4 py-3.5 font-serif text-lg focus:outline-none focus:border-foreground"
-                />
+          {lot.description && (
+            <p className="mt-6 text-[14px] leading-relaxed text-muted-foreground">{lot.description}</p>
+          )}
+
+          {/* BID PANEL */}
+          <div className="mt-10 border border-border p-7">
+            <div className="flex items-end justify-between gap-6">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {lot.status === "sold" ? "Sold for" : "Current bid"}
+                </div>
+                <div className="mt-2 font-serif text-4xl">{formatBid(lot.status === "sold" ? lot.sold_price : current)}</div>
+                <div className="mt-1 font-mono text-[11px] text-muted-foreground">{lot.bid_count} {lot.bid_count === 1 ? "bid" : "bids"}</div>
               </div>
-              <button
-                type="submit"
-                className="bg-foreground text-background px-8 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] hover:opacity-90 transition-opacity"
-              >
-                Place Bid
-              </button>
+              <div className="text-right">
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {isLive ? "Closes in" : session?.status === "upcoming" ? "Opens in" : "Status"}
+                </div>
+                <div className={"mt-2 font-mono text-xl " + (isLive ? "text-live" : "")}>
+                  {isLive ? formatCountdown(session?.ends_at) : session?.status === "upcoming" ? formatCountdown(session?.starts_at) : "Closed"}
+                </div>
+              </div>
             </div>
-            {error && <div className="text-[12px] text-live">{error}</div>}
-            {success && (
-              <div className="text-[12px] border-l-2 border-foreground pl-3 py-1 flex items-center justify-between gap-3">
-                <span>{success}</span>
-                <Link
-                  to="/checkout"
-                  search={{ lot: lot.id } as never}
-                  className="text-[11px] uppercase tracking-[0.18em] underline underline-offset-4 whitespace-nowrap"
-                >
-                  Pay now →
-                </Link>
+
+            {isLive && lot.status !== "sold" && (
+              <form onSubmit={handleBid} className="mt-7 space-y-3">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Your bid (min {formatBid(minNext)})
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder={String(minNext)}
+                    inputMode="numeric"
+                    className="flex-1 border-b border-border bg-transparent px-0 py-3 text-xl font-serif focus:outline-none focus:border-foreground"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="bg-foreground text-background px-7 py-3 text-[11px] font-medium uppercase tracking-[0.22em] hover:opacity-90 disabled:opacity-50"
+                  >
+                    {busy ? "Placing…" : user ? "Place bid" : "Sign in to bid"}
+                  </button>
+                </div>
+                {iAmHighBidder && <p className="font-mono text-[11px] text-live">You are the current high bidder.</p>}
+              </form>
+            )}
+
+            {(wonByMe || boughtByMe) && (
+              <div className="mt-7 border-t border-border pt-6">
+                {boughtByMe ? (
+                  <p className="text-[13px] text-muted-foreground">You purchased this lot. View it in your <Link to="/account" className="underline underline-offset-4">account</Link>.</p>
+                ) : (
+                  <>
+                    <p className="text-[13px]">The session has closed and you hold the winning bid.</p>
+                    <Link
+                      to="/checkout"
+                      search={{ lot: lot.id } as never}
+                      className="mt-4 inline-block bg-foreground text-background px-7 py-3.5 text-[11px] font-medium uppercase tracking-[0.22em]"
+                    >
+                      Proceed to checkout →
+                    </Link>
+                  </>
+                )}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              We will bid on your behalf in minimum increments up to your maximum.
-              Bids are binding. Buyer's premium of 22% applies on the hammer price.
-            </p>
-          </form>
 
-          <button
-            onClick={() => toggleWatch(lot.id)}
-            className="mt-6 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={isWatched ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
-            {isWatched ? "In your watchlist" : "Add to watchlist"}
-          </button>
-
-          <div className="mt-12 space-y-6 border-t border-border pt-8">
-            <Detail label="Medium" value={lot.medium} />
-            <Detail label="Dimensions" value={lot.dimensions} />
-            <Detail label="Provenance" value={lot.provenance} />
-            <Detail label="About the work" value={lot.description} />
-            <Detail label="About the artist" value={lot.artistBio} />
+            {session?.status === "upcoming" && (
+              <p className="mt-6 text-[13px] text-muted-foreground">Bidding opens when the session goes live. Check back soon.</p>
+            )}
           </div>
+
+          {/* BID HISTORY */}
+          {bids?.length > 0 && (
+            <div className="mt-10">
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Bid history</div>
+              <ul className="mt-4 divide-y divide-border border-y border-border">
+                {bids.map((b: any, i: number) => (
+                  <li key={`${b.created_at}-${i}`} className="flex items-center justify-between py-3 text-[13px]">
+                    <span className="font-serif text-lg">{formatBid(b.amount)}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {user && b.user_id === user.id ? "You · " : ""}
+                      {new Date(b.created_at).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </article>
 
-      {related.length > 0 && (
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-16">
-            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">More in {lot.category}</div>
-            <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-8">
-              {related.map((r) => {
-                const rl = getLotLive(r.id);
-                return (
-                  <Link key={r.id} to="/lot/$id" params={{ id: r.id }} className="group">
-                    <div className="aspect-square bg-muted overflow-hidden">
-                      <img src={r.image} alt={r.title} loading="lazy" width={1024} height={1024} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
-                    </div>
-                    <h4 className="mt-4 font-serif text-lg">{r.artist}</h4>
-                    <p className="font-serif italic text-sm text-muted-foreground">{r.title}, {r.year}</p>
-                    <div className="mt-2 font-serif">{formatBid(rl.bid)}</div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
       <SiteFooter />
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
-      <div className="mt-1.5 text-[14px] leading-relaxed">{value}</div>
     </div>
   );
 }
