@@ -1,93 +1,79 @@
-## Plan: Kalashetra — Premium Auction Platform with Admin Backend
+## Kalashetra v2 — Plan
 
-### 1. Rebrand
-- Replace "Vermillion" → **Kalashetra** everywhere (header, footer, meta tags, copy, email subjects)
-- Tagline: "Fine Art Auctions · Est. 2026" stays
-- Update all route `head()` titles
+A large, coordinated change. I'll ship it as one migration + one set of code edits.
 
-### 2. Database schema (Lovable Cloud)
-- `profiles` (id → auth.users, full_name, email, avatar_url, created_at) + auto-create trigger on signup
-- `app_role` enum: `owner`, `admin`, `user`
-- `user_roles` (user_id, role, unique) + `has_role(uuid, app_role)` security-definer function
-- Auto-promote `sunilnaikkethavath@gmail.com` to `owner` on signup via trigger
-- `admin_requests` (id, user_id, email, full_name, reason, status: pending/approved/rejected, decided_by, decided_at, created_at)
-- `auction_sessions` (id, title, slug, description, cover_image, starts_at, ends_at, status: draft/upcoming/live/ended, created_by, created_at)
-- `lots` (id, session_id, lot_number, artist, title, year, medium, dimensions, provenance, description, image_url, starting_bid, current_bid, bid_count, category, sold_to, sold_price, status)
-- `bids` (id, lot_id, user_id, amount, created_at) — RLS allows insert if session is live and amount valid; trigger updates lot.current_bid
-- `consignments` (id, user_id/null, artist, title, year, medium, dimensions, provenance, description, estimated_value, image_urls[], contact_email, contact_phone, status: pending/approved/rejected, created_at)
-- `commissions` (id, lot_id, buyer_id, hammer_price, commission_amount, commission_pct, payout_status, razorpay_payment_id, created_at) — for tracking payouts owed to owner UPI
+### 1. Categories
+- Remove **Photographs** and **Sculptures** everywhere (seed data, filters, sell form). Keep Paintings, Drawings, Prints, Mixed Media.
 
-All tables: RLS enabled, GRANTs to `authenticated`/`service_role`, public-read on `auction_sessions`/`lots` (anon SELECT allowed).
+### 2. Currency: USD → INR
+- `formatBid` → `₹` with `en-IN` grouping (e.g. ₹1,28,000).
+- Update bid increments to INR-sensible bands: <₹10k → ₹500, <₹50k → ₹1,000, <₹2L → ₹2,500, else ₹5,000.
+- Update buyer's premium copy & checkout.
 
-### 3. Authentication
-- Email/password sign-up + sign-in (no email auto-confirm — users verify email)
-- **Google sign-in** via Lovable managed OAuth
-- Auth page redesigned with current premium look, branded Kalashetra
-- Sign-out hygiene; root `onAuthStateChange` listener wired
+### 3. Bid bug ("must exceed current bid" even when higher)
+Root cause: the DB trigger `tg_apply_bid` AND the JS pre-check both read `current_bid`, and the JS message includes the amount while the trigger message is the bare string the user is seeing. Most likely the user's previous click already moved `current_bid` past their amount (race / double-submit), or the row in `lots.current_bid` is stored as a higher value due to a stale UI.
+Fix:
+- Make the trigger return a precise message: `Bid ₹X must exceed current ₹Y`.
+- Add a single-flight guard on the client (disable button on submit + ignore submits within 1s of the last).
+- Remove duplicate JS pre-check (trust trigger) so we don't double-validate against stale data.
+- Always refetch lot after a failed bid so the user sees the true current.
 
-### 4. Email infrastructure (Lovable Emails)
-- Set up email domain (will prompt user)
-- Auth confirmation emails branded Kalashetra
-- **Transactional emails** sent to `sunilnaikkethavath@gmail.com`:
-  - New consignment submitted (seller verification)
-  - New admin request submitted (with approve/reject magic link to admin panel)
-  - Sale completed (commission owed notification with amount + buyer + UPI reminder)
+### 4. Two bidding modes — short-term & long-term
+Add `auction_sessions.mode ENUM('short','long')` (default `long`).
+- **Short**: admin sets a duration in hours (2–6). When admin clicks "Go live", `starts_at = now()`, `ends_at = now() + duration`.
+- **Long**: multi-day sessions with explicit start/end dates (today's behaviour).
+- Admin Sessions form gets a Mode toggle + Duration field (only for short).
 
-### 5. Routes & pages
+### 5. Seller → Admin → Catalog → Upcoming → Live workflow
+Already partly there. Tighten:
+- Sell page submits a `consignment` (already wired).
+- Admin /consignments approves → button "Add to catalog" opens a session picker → creates a `lot` in chosen draft/upcoming session. Until the session goes live, lot is not biddable.
+- Lots can only be bid on when session is `live`.
 
-**Public**
-- `/` — landing (rebranded)
-- `/auctions` — current/live auctions (sessions list + lots within)
-- `/auctions/upcoming` — upcoming sessions with countdown
-- `/auctions/ended` — past sessions / results
-- `/sessions/$slug` — session detail page with all lots
-- `/lot/$id` — lot detail (bidding only if signed in + session live)
-- `/sell` — consignment form → submits to `consignments` table → emails owner
-- `/artists`, `/about` — keep, rebranded
-- `/auth` — sign in / sign up (email + Google) with redirect param
-- `/request-admin` — form for users to request admin access
+### 6. Payment deadline (11:59 PM IST)
+- Add `lots.payment_due_at` set when session ends (the next 23:59 IST after ends_at).
+- Add `lots.status` value `awaiting_payment` (between ended-with-winner and sold).
+- Add an admin server fn `expireUnpaidLots()` callable from `/admin` "Run cleanup" button + auto-called on any page load that needs it (lightweight). For unpaid lots past due: set `status='returned'`, clear `sold_to`, notify admin. Full pg_cron later.
 
-**Authenticated** (`src/routes/_authenticated/`)
-- `/account` — user dashboard: my bids, watchlist, my consignments, my admin request status
-- `/checkout/$lotId` — pay for won lot (Cards/UPI/Netbanking UI; mock until Razorpay added; commission recorded server-side)
+### 7. Per-user signup approval
+Add `profiles.account_status ENUM('pending','approved','suspended')` (default `pending`; owner auto-approved).
+- After sign-in, if status ≠ approved, show a "Pending admin approval" gate page (no access to bidding/checkout/sell). Browsing public catalog still allowed.
+- Admin dashboard `/admin/users` shows pending users with **Approve** / **Reject** / **Suspend** / **Remove user** buttons. "Remove user" deletes the auth user via admin API and cascades.
 
-**Admin** (`src/routes/_authenticated/admin/`, gated by `has_role(user, 'admin' or 'owner')`)
-- `/admin` — dashboard (stats: live sessions, pending requests, pending consignments, recent bids)
-- `/admin/sessions` — list, create, edit, delete auction sessions (with start/end dates, status)
-- `/admin/sessions/$id/lots` — manage lots in a session (add/edit/delete; upload image)
-- `/admin/requests` — admin access requests (approve/reject; only `owner` can approve)
-- `/admin/consignments` — review submitted artworks (approve → can convert to lot; reject)
-- `/admin/users` — list users, view roles, promote/demote (owner only)
-- `/admin/sales` — completed sales + commission ledger (UPI: 9346739056@ybl displayed)
+### 8. Per-auction registration with admin approval
+New table `auction_registrations(user_id, session_id, status pending|approved|rejected)`.
+- "Register to bid" button on session/lot page → creates pending row.
+- Admin /admin/sessions/$id has a "Registrations" tab to approve/reject.
+- Bidding rejected unless approved registration exists.
 
-### 6. Server functions (`createServerFn` + `requireSupabaseAuth`)
-- `submitConsignment` — public; inserts row; sends email to owner
-- `requestAdmin` — auth required; inserts admin_request; sends email to owner
-- `approveAdminRequest` / `rejectAdminRequest` — owner only; updates request + inserts user_role
-- `createSession` / `updateSession` / `deleteSession` — admin only
-- `createLot` / `updateLot` / `deleteLot` — admin only
-- `placeBid` — auth required; validates session live, amount ≥ current + increment; inserts bid; updates lot
-- `recordSale` — called on session end or checkout; computes 22% buyer premium + commission (e.g., 10%); creates commission row; emails owner
-- `getSessionsByStatus` — public reads via admin client
+### 9. Live room transparency (short auctions)
+On short-mode lot pages, bid history shows **bidder display name** + amount (only to approved registrants for that session). Long-mode keeps anonymous (current behaviour).
 
-### 7. Admin role bootstrap
-- Trigger `handle_new_user`: creates profile; if email = `sunilnaikkethavath@gmail.com`, also inserts `('owner', user_id)` and `('admin', user_id)` into user_roles
-- `has_role()` security-definer function for RLS
+### 10. Image upload (system file → storage)
+- Create storage bucket `lot-images` (public).
+- Reusable `<ImageUpload>` component: file picker → uploads to bucket → returns public URL.
+- Used in admin Sessions form (cover image), admin Lots form (lot image), sell form (consignment images).
 
-### 8. Commission / payout
-- Display owner UPI `9346739056@ybl` + QR placeholder at checkout for now (text noting Razorpay auto-split coming)
-- Every sale creates `commissions` row visible in `/admin/sales`
-- When Razorpay keys provided later: swap mock checkout for Razorpay Orders API + Route auto-transfer to UPI
+### 11. Admin Users — Remove user button
+Add **Remove user** next to **Make admin** (owner only, never on owner). Calls `auth.admin.deleteUser` via server fn.
 
-### 9. Existing UI to keep / migrate
-- Header (rebranded), footer, lot card, premium typography, dark theme — all preserved
-- `src/lib/auction-data.ts` legacy mock LOTS replaced by live DB reads; keep helpers `formatBid`, `formatCountdown`, `nextMinIncrement`
-- Existing `signin.tsx` becomes `/auth` redirect; existing `checkout.tsx` rewired to commission flow
+### 12. Auctions vs Upcoming pages distinct
+- `/auctions` shows ONLY `status='live'` sessions (grouped by session, with their lots & countdowns).
+- `/auctions/upcoming` shows ONLY `status='upcoming'` (catalogues, opens-in countdowns) — already correct, but de-dupe the layout so they're visually distinct.
 
-### Technical notes
-- All DB writes go through server fns with `requireSupabaseAuth`; RLS as defense in depth
-- Image uploads → Lovable Cloud storage bucket `lots` (public read)
-- Use TanStack Query for all reads with route loaders priming cache
-- Email domain setup will prompt user via `<presentation-open-email-setup>`
+### 13. Admin can change session times & countdowns reflect instantly
+- The "Edit" form already accepts new `ends_at`. Issue is the cached query: invalidate `["catalogue"]` AND `["lot", *]` on every session edit (already partial). Also bump the `useNow` tick on those pages to 1s for accurate countdowns.
 
-This is a large build — I'll do it in this order: schema → auth → admin gate → admin CRUD → public pages rewire → bidding → consignment + emails → checkout/commission.
+---
+
+### Technical bits
+- One migration: enums, columns, new table, grants, RLS policies, updated trigger message, storage bucket policies.
+- One pass of code edits for the routes / components above.
+- Touch points: `src/lib/format.ts`, `src/lib/auction.functions.ts`, `src/routes/lot.$id.tsx`, `src/routes/auctions.tsx`, `src/routes/auctions.upcoming.tsx`, `src/routes/sell.tsx`, `src/routes/checkout.tsx`, `src/routes/_authenticated/admin/*`, `src/hooks/use-auth.ts`, `src/components/ImageUpload.tsx` (new), `src/routes/_authenticated/pending.tsx` (new gate page).
+
+### Questions before I start
+1. **Short auction duration** — should admin pick any minutes value, or fixed buckets (2h / 3h / 6h)?
+2. **Auto-approve owner-promoted admins**: when an admin (not just owner) is added, should they auto-approve users, or only the owner?
+3. **"Remove user"** should it hard-delete the auth account (irreversible) or just suspend (`account_status='suspended'`)?
+
+After your answers I'll execute the whole plan in one go.

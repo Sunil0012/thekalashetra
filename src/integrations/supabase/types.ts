@@ -80,14 +80,51 @@ export type Database = {
         }
         Relationships: []
       }
+      auction_registrations: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          id: string
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "auction_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auction_sessions: {
         Row: {
           cover_image: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          duration_minutes: number | null
           ends_at: string
           id: string
+          mode: Database["public"]["Enums"]["auction_mode"]
           slug: string
           starts_at: string
           status: Database["public"]["Enums"]["session_status"]
@@ -99,8 +136,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration_minutes?: number | null
           ends_at: string
           id?: string
+          mode?: Database["public"]["Enums"]["auction_mode"]
           slug: string
           starts_at: string
           status?: Database["public"]["Enums"]["session_status"]
@@ -112,8 +151,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration_minutes?: number | null
           ends_at?: string
           id?: string
+          mode?: Database["public"]["Enums"]["auction_mode"]
           slug?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["session_status"]
@@ -274,6 +315,7 @@ export type Database = {
           image_url: string | null
           lot_number: number
           medium: string | null
+          payment_due_at: string | null
           provenance: string | null
           session_id: string
           sold_price: number | null
@@ -296,6 +338,7 @@ export type Database = {
           image_url?: string | null
           lot_number: number
           medium?: string | null
+          payment_due_at?: string | null
           provenance?: string | null
           session_id: string
           sold_price?: number | null
@@ -318,6 +361,7 @@ export type Database = {
           image_url?: string | null
           lot_number?: number
           medium?: string | null
+          payment_due_at?: string | null
           provenance?: string | null
           session_id?: string
           sold_price?: number | null
@@ -340,6 +384,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: Database["public"]["Enums"]["account_status"]
           avatar_url: string | null
           created_at: string
           email: string | null
@@ -348,6 +393,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           avatar_url?: string | null
           created_at?: string
           email?: string | null
@@ -356,6 +402,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           avatar_url?: string | null
           created_at?: string
           email?: string | null
@@ -427,8 +474,16 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      account_status: "pending" | "approved" | "suspended"
       app_role: "owner" | "admin" | "user"
-      lot_status: "active" | "sold" | "unsold" | "withdrawn"
+      auction_mode: "short" | "long"
+      lot_status:
+        | "active"
+        | "sold"
+        | "unsold"
+        | "withdrawn"
+        | "awaiting_payment"
+        | "returned"
       payout_status: "pending" | "paid"
       request_status: "pending" | "approved" | "rejected"
       session_status: "draft" | "upcoming" | "live" | "ended"
@@ -559,8 +614,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_status: ["pending", "approved", "suspended"],
       app_role: ["owner", "admin", "user"],
-      lot_status: ["active", "sold", "unsold", "withdrawn"],
+      auction_mode: ["short", "long"],
+      lot_status: [
+        "active",
+        "sold",
+        "unsold",
+        "withdrawn",
+        "awaiting_payment",
+        "returned",
+      ],
       payout_status: ["pending", "paid"],
       request_status: ["pending", "approved", "rejected"],
       session_status: ["draft", "upcoming", "live", "ended"],

@@ -16,7 +16,7 @@ export function SiteHeader() {
   };
 
   const navItems = [
-    { to: "/auctions", label: "Auctions" },
+    { to: "/auctions", label: "Live Auctions" },
     { to: "/auctions/upcoming", label: "Upcoming" },
     { to: "/sell", label: "Sell" },
     { to: "/about", label: "About" },
@@ -89,13 +89,13 @@ export function SiteFooter() {
         <div>
           <Link to="/" className="font-serif text-2xl">Kalashetra</Link>
           <p className="mt-3 text-[12px] text-muted-foreground max-w-sm leading-relaxed">
-            A curated fine art auction house. Live sessions of paintings, drawings, sculpture, photography and prints.
+            A curated fine art auction house in India. Live & timed sessions for paintings, drawings, prints, and mixed media.
           </p>
         </div>
         <div>
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground mb-3">Auctions</div>
           <ul className="space-y-2 text-[13px]">
-            <li><Link to="/auctions" className="hover:opacity-70">Current</Link></li>
+            <li><Link to="/auctions" className="hover:opacity-70">Live now</Link></li>
             <li><Link to="/auctions/upcoming" className="hover:opacity-70">Upcoming</Link></li>
           </ul>
         </div>
@@ -117,7 +117,7 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-6 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground flex flex-wrap items-center justify-between gap-3">
           <span>© 2026 Kalashetra</span>
-          <span>Bids in USD · Buyer's premium 22% · 10% commission</span>
+          <span>Bids in INR · Buyer's premium 22% · 10% commission</span>
         </div>
       </div>
     </footer>
