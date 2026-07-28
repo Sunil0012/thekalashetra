@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as RequestAdminRouteImport } from './routes/request-admin'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuctionsRouteImport } from './routes/auctions'
@@ -44,6 +45,11 @@ const SellRoute = SellRouteImport.update({
 const RequestAdminRoute = RequestAdminRouteImport.update({
   id: '/request-admin',
   path: '/request-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/auctions': typeof AuctionsRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/auctions': typeof AuctionsRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/auctions': typeof AuctionsRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   AuctionsRoute: typeof AuctionsRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
+  LiveRoute: typeof LiveRoute
   RequestAdminRoute: typeof RequestAdminRoute
   SellRoute: typeof SellRoute
   SigninRoute: typeof SigninRoute
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/request-admin'
       fullPath: '/request-admin'
       preLoaderRoute: typeof RequestAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -502,6 +522,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuctionsRoute: AuctionsRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
+  LiveRoute: LiveRoute,
   RequestAdminRoute: RequestAdminRoute,
   SellRoute: SellRoute,
   SigninRoute: SigninRoute,
