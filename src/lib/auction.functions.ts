@@ -39,15 +39,33 @@ function nextISTMidnight(from: Date = new Date()): Date {
 // =================== PUBLIC READS ===================
 
 export const listSessions = createServerFn({ method: "GET" })
-  .inputValidator((d: { status?: "upcoming" | "live" | "ended" | "all" }) => d)
+  .inputValidator((d: { status?: "upcoming" | "live" | "ended" | "all"; mode?: "short" | "long" | "all" }) => d)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin.from("auction_sessions").select("*").neq("status", "draft").order("starts_at", { ascending: false });
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
+    if (data.mode && data.mode !== "all") q = q.eq("mode", data.mode);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+// Live-bidding slots: short-mode sessions with a fixed bidding window, plus their lots
+export const listLiveSlots = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: sessions, error } = await supabaseAdmin
+    .from("auction_sessions").select("*").eq("mode", "short").neq("status", "draft")
+    .order("starts_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  const ids = (sessions ?? []).map((s: any) => s.id);
+  let lots: any[] = [];
+  if (ids.length) {
+    const { data: l } = await supabaseAdmin.from("lots").select("*").in("session_id", ids).order("lot_number", { ascending: true });
+    lots = l ?? [];
+  }
+  return { sessions: sessions ?? [], lots };
+});
+
 
 export const getLot = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
@@ -95,12 +113,21 @@ export const placeBid = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: lot } = await supabaseAdmin.from("lots").select("id, session_id").eq("id", data.lotId).maybeSingle();
     if (!lot) throw new Error("Lot not found");
+    // Enforce the live bidding window set by the admin
+    const { data: session } = await supabaseAdmin.from("auction_sessions")
+      .select("status, starts_at, ends_at, mode").eq("id", lot.session_id).maybeSingle();
+    if (!session) throw new Error("Auction session not found");
+    const now = Date.now();
+    if (session.status !== "live") throw new Error("Bidding is closed for this auction.");
+    if (now < new Date(session.starts_at).getTime()) throw new Error("Live bidding has not opened yet for this lot.");
+    if (now > new Date(session.ends_at).getTime()) throw new Error("The live bidding window for this lot has closed.");
     // Require approved registration for this session
     const { data: reg } = await supabaseAdmin.from("auction_registrations")
       .select("status").eq("session_id", lot.session_id).eq("user_id", context.userId).maybeSingle();
     if (!reg || reg.status !== "approved") {
       throw new Error("Register for this auction and wait for admin approval before bidding.");
     }
+
     // Insert; the DB trigger validates session is live and amount > current_bid
     const { error } = await supabaseAdmin.from("bids").insert({ lot_id: data.lotId, user_id: context.userId, amount: data.amount });
     if (error) throw new Error(error.message);

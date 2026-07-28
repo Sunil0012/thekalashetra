@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { getLot, placeBid } from "@/lib/auction.functions";
+import { getLot, placeBid, registerForSession, getMyRegistration } from "@/lib/auction.functions";
 import { formatBid, formatCountdown, nextMinIncrement } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
 import { useNow } from "@/hooks/use-now";
@@ -56,8 +56,12 @@ function LotPage() {
   if (isError || !data?.lot) return <NotFoundLot />;
 
   const { lot, session, bids } = data as any;
-  const isLive = session?.status === "live";
+  const nowMs = Date.now();
+  const windowOpen =
+    !!session && nowMs >= new Date(session.starts_at).getTime() && nowMs <= new Date(session.ends_at).getTime();
+  const isLive = session?.status === "live" && windowOpen;
   const isEnded = session?.status === "ended" || lot.status === "sold";
+
   const current = Number(lot.current_bid || lot.starting_bid || 0);
   const minNext = current + nextMinIncrement(current);
   const iAmHighBidder = !!user && bids?.[0]?.user_id === user.id;
@@ -182,6 +186,17 @@ function LotPage() {
                 {iAmHighBidder && <p className="font-mono text-[11px] text-live">You are the current high bidder.</p>}
               </form>
             )}
+            {!isLive && !isEnded && lot.status !== "sold" && (
+              <div className="mt-7 border-t border-border pt-6">
+                <p className="text-[13px] text-muted-foreground">
+                  {session?.mode === "short"
+                    ? "This lot bids in a timed live slot. Bidding opens exactly at the scheduled time — register now so you're cleared the moment it starts."
+                    : "Bidding for this session hasn't opened yet. Register in advance to be approved before it goes live."}
+                </p>
+                <RegisterPanel sessionId={session?.id} lotId={lot.id} />
+              </div>
+            )}
+
 
             {(wonByMe || boughtByMe) && (
               <div className="mt-7 border-t border-border pt-6">
@@ -229,5 +244,39 @@ function LotPage() {
 
       <SiteFooter />
     </div>
+  );
+}
+
+function RegisterPanel({ sessionId, lotId }: { sessionId?: string; lotId: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const regFn = useServerFn(registerForSession);
+  const myRegFn = useServerFn(getMyRegistration);
+  const { data: reg } = useQuery({
+    queryKey: ["registration", sessionId, user?.id],
+    queryFn: () => myRegFn({ data: { sessionId: sessionId! } }),
+    enabled: !!user && !!sessionId,
+  });
+  const register = useMutation({
+    mutationFn: () => regFn({ data: { sessionId: sessionId! } }),
+    onSuccess: () => { toast.success("Registration requested — awaiting admin approval."); qc.invalidateQueries({ queryKey: ["registration", sessionId] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (!sessionId) return null;
+  if (!user) {
+    return (
+      <Link to="/auth" search={{ redirect: `/lot/${lotId}` } as never} className="mt-4 inline-block border border-foreground px-6 py-3 text-[11px] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background transition-colors">
+        Sign in to register
+      </Link>
+    );
+  }
+  if (reg?.status === "approved") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">✓ Approved to bid in this session</p>;
+  if (reg?.status === "pending") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Registration pending approval</p>;
+  if (reg?.status === "rejected") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-red-500">Registration declined</p>;
+  return (
+    <button onClick={() => register.mutate()} disabled={register.isPending} className="mt-4 border border-foreground px-6 py-3 text-[11px] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background transition-colors disabled:opacity-50">
+      {register.isPending ? "Requesting…" : "Register to bid"}
+    </button>
   );
 }

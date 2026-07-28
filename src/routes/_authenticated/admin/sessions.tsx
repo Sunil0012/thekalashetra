@@ -99,17 +99,24 @@ function AdminSessions() {
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
+              const start = new Date(String(fd.get("starts_at")));
+              const end = new Date(String(fd.get("ends_at")));
+              if (end <= start) { toast.error("End time must be after the start time."); return; }
+              const mode = String(fd.get("mode") || "long") as "short" | "long";
               const payload: any = {
                 title: String(fd.get("title") || ""),
                 slug: slugify(String(fd.get("slug") || fd.get("title") || "")),
                 description: String(fd.get("description") || ""),
                 cover_image: String(fd.get("cover_image") || "") || null,
-                starts_at: new Date(String(fd.get("starts_at"))).toISOString(),
-                ends_at: new Date(String(fd.get("ends_at"))).toISOString(),
+                starts_at: start.toISOString(),
+                ends_at: end.toISOString(),
                 status: String(fd.get("status")) as any,
+                mode,
+                duration_minutes: mode === "short" ? Math.round((end.getTime() - start.getTime()) / 60000) : null,
               };
               if (editing?.id) payload.id = editing.id;
               m.mutate(payload);
+
             }}
             className="bg-background border border-border w-full max-w-2xl p-8 space-y-5 max-h-[90vh] overflow-y-auto"
           >
@@ -122,11 +129,22 @@ function AdminSessions() {
               <Field name="starts_at" label="Starts at" type="datetime-local" defaultValue={editing?.starts_at ? toLocalInput(editing.starts_at) : ""} required />
               <Field name="ends_at" label="Ends at" type="datetime-local" defaultValue={editing?.ends_at ? toLocalInput(editing.ends_at) : ""} required />
             </div>
-            <div>
-              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status</label>
-              <select name="status" defaultValue={editing?.status ?? "upcoming"} className="w-full bg-transparent border-b border-border py-3">
-                {["draft", "upcoming", "live", "ended"].map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+
+              <div>
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Auction type</label>
+                <select name="mode" defaultValue={editing?.mode ?? "long"} className="w-full bg-transparent border-b border-border py-3">
+                  <option value="long" className="bg-background">Standard (multi-day)</option>
+                  <option value="short" className="bg-background">Live bidding slot (timed window)</option>
+                </select>
+                <p className="mt-2 text-[11px] text-muted-foreground">Live slots appear on the Live Bidding page. Bids are only accepted between the start and end time above.</p>
+              </div>
+              <div>
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status</label>
+                <select name="status" defaultValue={editing?.status ?? "upcoming"} className="w-full bg-transparent border-b border-border py-3">
+                  {["draft", "upcoming", "live", "ended"].map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
+                </select>
+              </div>
             </div>
             <div className="flex justify-between items-center pt-4">
               {editing?.id ? (
