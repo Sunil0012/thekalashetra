@@ -113,12 +113,21 @@ export const placeBid = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: lot } = await supabaseAdmin.from("lots").select("id, session_id").eq("id", data.lotId).maybeSingle();
     if (!lot) throw new Error("Lot not found");
+    // Enforce the live bidding window set by the admin
+    const { data: session } = await supabaseAdmin.from("auction_sessions")
+      .select("status, starts_at, ends_at, mode").eq("id", lot.session_id).maybeSingle();
+    if (!session) throw new Error("Auction session not found");
+    const now = Date.now();
+    if (session.status !== "live") throw new Error("Bidding is closed for this auction.");
+    if (now < new Date(session.starts_at).getTime()) throw new Error("Live bidding has not opened yet for this lot.");
+    if (now > new Date(session.ends_at).getTime()) throw new Error("The live bidding window for this lot has closed.");
     // Require approved registration for this session
     const { data: reg } = await supabaseAdmin.from("auction_registrations")
       .select("status").eq("session_id", lot.session_id).eq("user_id", context.userId).maybeSingle();
     if (!reg || reg.status !== "approved") {
       throw new Error("Register for this auction and wait for admin approval before bidding.");
     }
+
     // Insert; the DB trigger validates session is live and amount > current_bid
     const { error } = await supabaseAdmin.from("bids").insert({ lot_id: data.lotId, user_id: context.userId, amount: data.amount });
     if (error) throw new Error(error.message);
