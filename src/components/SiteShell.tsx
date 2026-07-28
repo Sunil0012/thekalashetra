@@ -98,7 +98,9 @@ export function SiteFooter() {
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground mb-3">Auctions</div>
           <ul className="space-y-2 text-[13px]">
             <li><Link to="/auctions" className="hover:opacity-70">Live now</Link></li>
+            <li><Link to="/live" className="hover:opacity-70">Live bidding slots</Link></li>
             <li><Link to="/auctions/upcoming" className="hover:opacity-70">Upcoming</Link></li>
+
           </ul>
         </div>
         <div>
