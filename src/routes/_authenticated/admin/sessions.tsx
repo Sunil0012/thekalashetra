@@ -99,17 +99,24 @@ function AdminSessions() {
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
+              const start = new Date(String(fd.get("starts_at")));
+              const end = new Date(String(fd.get("ends_at")));
+              if (end <= start) { toast.error("End time must be after the start time."); return; }
+              const mode = String(fd.get("mode") || "long") as "short" | "long";
               const payload: any = {
                 title: String(fd.get("title") || ""),
                 slug: slugify(String(fd.get("slug") || fd.get("title") || "")),
                 description: String(fd.get("description") || ""),
                 cover_image: String(fd.get("cover_image") || "") || null,
-                starts_at: new Date(String(fd.get("starts_at"))).toISOString(),
-                ends_at: new Date(String(fd.get("ends_at"))).toISOString(),
+                starts_at: start.toISOString(),
+                ends_at: end.toISOString(),
                 status: String(fd.get("status")) as any,
+                mode,
+                duration_minutes: mode === "short" ? Math.round((end.getTime() - start.getTime()) / 60000) : null,
               };
               if (editing?.id) payload.id = editing.id;
               m.mutate(payload);
+
             }}
             className="bg-background border border-border w-full max-w-2xl p-8 space-y-5 max-h-[90vh] overflow-y-auto"
           >
