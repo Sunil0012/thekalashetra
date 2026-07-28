@@ -39,15 +39,33 @@ function nextISTMidnight(from: Date = new Date()): Date {
 // =================== PUBLIC READS ===================
 
 export const listSessions = createServerFn({ method: "GET" })
-  .inputValidator((d: { status?: "upcoming" | "live" | "ended" | "all" }) => d)
+  .inputValidator((d: { status?: "upcoming" | "live" | "ended" | "all"; mode?: "short" | "long" | "all" }) => d)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin.from("auction_sessions").select("*").neq("status", "draft").order("starts_at", { ascending: false });
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
+    if (data.mode && data.mode !== "all") q = q.eq("mode", data.mode);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+// Live-bidding slots: short-mode sessions with a fixed bidding window, plus their lots
+export const listLiveSlots = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: sessions, error } = await supabaseAdmin
+    .from("auction_sessions").select("*").eq("mode", "short").neq("status", "draft")
+    .order("starts_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  const ids = (sessions ?? []).map((s: any) => s.id);
+  let lots: any[] = [];
+  if (ids.length) {
+    const { data: l } = await supabaseAdmin.from("lots").select("*").in("session_id", ids).order("lot_number", { ascending: true });
+    lots = l ?? [];
+  }
+  return { sessions: sessions ?? [], lots };
+});
+
 
 export const getLot = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
