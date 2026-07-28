@@ -56,8 +56,12 @@ function LotPage() {
   if (isError || !data?.lot) return <NotFoundLot />;
 
   const { lot, session, bids } = data as any;
-  const isLive = session?.status === "live";
+  const nowMs = Date.now();
+  const windowOpen =
+    !!session && nowMs >= new Date(session.starts_at).getTime() && nowMs <= new Date(session.ends_at).getTime();
+  const isLive = session?.status === "live" && windowOpen;
   const isEnded = session?.status === "ended" || lot.status === "sold";
+
   const current = Number(lot.current_bid || lot.starting_bid || 0);
   const minNext = current + nextMinIncrement(current);
   const iAmHighBidder = !!user && bids?.[0]?.user_id === user.id;
