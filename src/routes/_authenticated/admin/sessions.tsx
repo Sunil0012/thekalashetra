@@ -130,10 +130,23 @@ function AdminSessions() {
               <Field name="ends_at" label="Ends at" type="datetime-local" defaultValue={editing?.ends_at ? toLocalInput(editing.ends_at) : ""} required />
             </div>
             <div>
-              <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status</label>
-              <select name="status" defaultValue={editing?.status ?? "upcoming"} className="w-full bg-transparent border-b border-border py-3">
-                {["draft", "upcoming", "live", "ended"].map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Auction type</label>
+                <select name="mode" defaultValue={editing?.mode ?? "long"} className="w-full bg-transparent border-b border-border py-3">
+                  <option value="long" className="bg-background">Standard (multi-day)</option>
+                  <option value="short" className="bg-background">Live bidding slot (timed window)</option>
+                </select>
+                <p className="mt-2 text-[11px] text-muted-foreground">Live slots appear on the Live Bidding page. Bids are only accepted between the start and end time above.</p>
+              </div>
+              <div>
+                <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status</label>
+                <select name="status" defaultValue={editing?.status ?? "upcoming"} className="w-full bg-transparent border-b border-border py-3">
+                  {["draft", "upcoming", "live", "ended"].map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
+                </select>
+              </div>
+            </div>
+
             </div>
             <div className="flex justify-between items-center pt-4">
               {editing?.id ? (
