@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { listLiveSlots, registerForSession, getMyRegistration } from "@/lib/auction.functions";
-import { formatCountdown, formatMoney } from "@/lib/format";
+import { formatCountdown, formatBid } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -155,7 +155,7 @@ function SlotCard({ session, lots, state }: { session: any; lots: any[]; state: 
               <div className="mt-1.5 text-[13px] font-medium">{l.artist}</div>
               <div className="font-serif text-lg italic leading-tight">{l.title}</div>
               <div className="mt-3 font-mono text-[11px] text-muted-foreground">
-                {state === "live" ? "Current" : "Opening"} {formatMoney(state === "live" ? l.current_bid : l.starting_bid)}
+                {state === "live" ? "Current" : "Opening"} {formatBid(state === "live" ? l.current_bid : l.starting_bid)}
               </div>
             </Link>
           ))}
