@@ -146,8 +146,6 @@ function AdminSessions() {
                 </select>
               </div>
             </div>
-
-            </div>
             <div className="flex justify-between items-center pt-4">
               {editing?.id ? (
                 <Link to="/admin/sessions/$id/lots" params={{ id: editing.id }} className="text-[11px] uppercase tracking-[0.18em] underline">Manage lots →</Link>
