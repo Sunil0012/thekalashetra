@@ -186,6 +186,17 @@ function LotPage() {
                 {iAmHighBidder && <p className="font-mono text-[11px] text-live">You are the current high bidder.</p>}
               </form>
             )}
+            {!isLive && !isEnded && lot.status !== "sold" && (
+              <div className="mt-7 border-t border-border pt-6">
+                <p className="text-[13px] text-muted-foreground">
+                  {session?.mode === "short"
+                    ? "This lot bids in a timed live slot. Bidding opens exactly at the scheduled time — register now so you're cleared the moment it starts."
+                    : "Bidding for this session hasn't opened yet. Register in advance to be approved before it goes live."}
+                </p>
+                <RegisterPanel sessionId={session?.id} lotId={lot.id} />
+              </div>
+            )}
+
 
             {(wonByMe || boughtByMe) && (
               <div className="mt-7 border-t border-border pt-6">
