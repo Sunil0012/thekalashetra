@@ -129,8 +129,8 @@ function AdminSessions() {
               <Field name="starts_at" label="Starts at" type="datetime-local" defaultValue={editing?.starts_at ? toLocalInput(editing.starts_at) : ""} required />
               <Field name="ends_at" label="Ends at" type="datetime-local" defaultValue={editing?.ends_at ? toLocalInput(editing.ends_at) : ""} required />
             </div>
-            <div>
             <div className="grid grid-cols-2 gap-4">
+
               <div>
                 <label className="block font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Auction type</label>
                 <select name="mode" defaultValue={editing?.mode ?? "long"} className="w-full bg-transparent border-b border-border py-3">
