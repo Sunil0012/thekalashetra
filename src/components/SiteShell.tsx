@@ -17,10 +17,12 @@ export function SiteHeader() {
 
   const navItems = [
     { to: "/auctions", label: "Live Auctions" },
+    { to: "/live", label: "Live Bidding" },
     { to: "/auctions/upcoming", label: "Upcoming" },
     { to: "/sell", label: "Sell" },
     { to: "/about", label: "About" },
   ];
+
 
   return (
     <header className="border-b border-border bg-background">
