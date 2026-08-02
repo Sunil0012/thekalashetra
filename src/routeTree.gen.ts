@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSessionsRouteImport } from './routes/_authenticated/admin/sessions'
 import { Route as AuthenticatedAdminSalesRouteImport } from './routes/_authenticated/admin/sales'
 import { Route as AuthenticatedAdminRequestsRouteImport } from './routes/_authenticated/admin/requests'
+import { Route as AuthenticatedAdminRegistrationsRouteImport } from './routes/_authenticated/admin/registrations'
 import { Route as AuthenticatedAdminConsignmentsRouteImport } from './routes/_authenticated/admin/consignments'
 import { Route as AuthenticatedAdminSessionsIdLotsRouteImport } from './routes/_authenticated/admin/sessions_.$id.lots'
 
@@ -133,6 +134,12 @@ const AuthenticatedAdminRequestsRoute =
     path: '/requests',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminRegistrationsRoute =
+  AuthenticatedAdminRegistrationsRouteImport.update({
+    id: '/registrations',
+    path: '/registrations',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminConsignmentsRoute =
   AuthenticatedAdminConsignmentsRouteImport.update({
     id: '/consignments',
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -184,6 +192,7 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/lot/$id': typeof LotIdRoute
   '/_authenticated/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/_authenticated/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/_authenticated/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/_authenticated/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/_authenticated/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lot/$id'
     | '/admin/consignments'
+    | '/admin/registrations'
     | '/admin/requests'
     | '/admin/sales'
     | '/admin/sessions'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/lot/$id'
     | '/admin/consignments'
+    | '/admin/registrations'
     | '/admin/requests'
     | '/admin/sales'
     | '/admin/sessions'
@@ -280,6 +292,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/lot/$id'
     | '/_authenticated/admin/consignments'
+    | '/_authenticated/admin/registrations'
     | '/_authenticated/admin/requests'
     | '/_authenticated/admin/sales'
     | '/_authenticated/admin/sessions'
@@ -447,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRequestsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/registrations': {
+      id: '/_authenticated/admin/registrations'
+      path: '/registrations'
+      fullPath: '/admin/registrations'
+      preLoaderRoute: typeof AuthenticatedAdminRegistrationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/consignments': {
       id: '/_authenticated/admin/consignments'
       path: '/consignments'
@@ -466,6 +486,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminConsignmentsRoute: typeof AuthenticatedAdminConsignmentsRoute
+  AuthenticatedAdminRegistrationsRoute: typeof AuthenticatedAdminRegistrationsRoute
   AuthenticatedAdminRequestsRoute: typeof AuthenticatedAdminRequestsRoute
   AuthenticatedAdminSalesRoute: typeof AuthenticatedAdminSalesRoute
   AuthenticatedAdminSessionsRoute: typeof AuthenticatedAdminSessionsRoute
@@ -477,6 +498,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminConsignmentsRoute: AuthenticatedAdminConsignmentsRoute,
+    AuthenticatedAdminRegistrationsRoute: AuthenticatedAdminRegistrationsRoute,
     AuthenticatedAdminRequestsRoute: AuthenticatedAdminRequestsRoute,
     AuthenticatedAdminSalesRoute: AuthenticatedAdminSalesRoute,
     AuthenticatedAdminSessionsRoute: AuthenticatedAdminSessionsRoute,
