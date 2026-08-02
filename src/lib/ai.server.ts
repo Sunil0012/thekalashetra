@@ -47,7 +47,7 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
     {
       role: "user",
       content:
-        'Write 6 editorial pieces for today. Return JSON: {"items":[{"kicker":"2-3 word section label","title":"headline under 70 chars","standfirst":"one sentence, under 160 chars","body":["paragraph","paragraph","paragraph","paragraph"],"readMinutes":number}]}. Mix: market analysis, an artist/movement primer, a collecting how-to, conservation or provenance, a South Asian art focus, and an auction-mechanics explainer. Each paragraph 45-80 words. No markdown, no headings inside body.',
+        'Write 4 editorial pieces for today. Return JSON: {"items":[{"kicker":"2-3 word section label","title":"headline under 70 chars","standfirst":"one sentence, under 160 chars","body":["paragraph","paragraph","paragraph"],"readMinutes":number}]}. Mix: market analysis, an artist/movement primer, a South Asian art focus, and an auction-mechanics or provenance explainer. Each paragraph 40-60 words. No markdown, no headings inside body.',
     },
   ]);
 
@@ -60,7 +60,7 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
     if (m) items = JSON.parse(m[0])?.items ?? [];
   }
 
-  const dispatches: Dispatch[] = items.slice(0, 6).map((i: any, idx: number) => ({
+  const dispatches: Dispatch[] = items.slice(0, 4).map((i: any, idx: number) => ({
     slug: slugify(String(i.title ?? `dispatch-${idx}`)),
     kicker: String(i.kicker ?? "Dispatch"),
     title: String(i.title ?? "Untitled"),
