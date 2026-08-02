@@ -124,8 +124,8 @@ function AuctionsPage() {
         ) : visible.length === 0 ? (
           <div className="py-24 text-center border border-border">
             <p className="font-serif text-2xl italic">No lots match — or no session is live right now.</p>
-            <Link to="/auctions/upcoming" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
-              View upcoming sessions →
+            <Link to="/live" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+              View live bidding slots →
             </Link>
           </div>
         ) : (

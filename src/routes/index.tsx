@@ -27,7 +27,6 @@ function HomePage() {
   const sessions = data?.sessions ?? [];
   const sessionsById: Record<string, any> = data?.sessionsById ?? {};
   const liveSessions = sessions.filter((s: any) => s.status === "live");
-  const upcoming = sessions.filter((s: any) => s.status === "upcoming");
 
   const featured = lots[0];
   const selected = lots.slice(1, 7);
@@ -63,10 +62,10 @@ function HomePage() {
               View Catalogue
             </Link>
             <Link
-              to="/auctions/upcoming"
+              to="/live"
               className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition-colors"
             >
-              Upcoming sessions →
+              Live bidding slots →
             </Link>
           </div>
 
@@ -115,8 +114,8 @@ function HomePage() {
             ) : (
               <>
                 <p className="font-serif text-2xl italic">No live session at the moment.</p>
-                <Link to="/auctions/upcoming" className="mt-6 text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
-                  See upcoming auctions →
+                <Link to="/live" className="mt-6 text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+                  See live bidding slots →
                 </Link>
               </>
             )}
@@ -159,34 +158,6 @@ function HomePage() {
                       <div className="font-serif text-lg">{formatBid(l.current_bid)}</div>
                       <div className="font-mono text-[10px] text-muted-foreground">{l.bid_count} bids</div>
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* UPCOMING SESSIONS */}
-      {upcoming.length > 0 && (
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-16">
-            <div className="flex items-end justify-between gap-6 mb-10">
-              <div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Calendar</div>
-                <h2 className="mt-4 font-serif text-3xl md:text-4xl tracking-tight">Upcoming Sessions</h2>
-              </div>
-              <Link to="/auctions/upcoming" className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground shrink-0">
-                All upcoming →
-              </Link>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              {upcoming.slice(0, 2).map((s: any) => (
-                <Link key={s.id} to="/auctions/upcoming" className="border border-border p-8 hover:border-foreground transition-colors block">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Opens in {formatCountdown(s.starts_at)}</div>
-                  <div className="mt-3 font-serif text-2xl">{s.title}</div>
-                  <div className="mt-3 font-mono text-[11px] text-muted-foreground">
-                    {new Date(s.starts_at).toLocaleDateString(undefined, { dateStyle: "long" })}
                   </div>
                 </Link>
               ))}

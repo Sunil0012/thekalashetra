@@ -13,6 +13,7 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as RequestAdminRouteImport } from './routes/request-admin'
 import { Route as LiveRouteImport } from './routes/live'
+import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuctionsRouteImport } from './routes/auctions'
@@ -22,13 +23,13 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LotIdRouteImport } from './routes/lot.$id'
-import { Route as AuctionsUpcomingRouteImport } from './routes/auctions.upcoming'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminSessionsRouteImport } from './routes/_authenticated/admin/sessions'
 import { Route as AuthenticatedAdminSalesRouteImport } from './routes/_authenticated/admin/sales'
 import { Route as AuthenticatedAdminRequestsRouteImport } from './routes/_authenticated/admin/requests'
+import { Route as AuthenticatedAdminRegistrationsRouteImport } from './routes/_authenticated/admin/registrations'
 import { Route as AuthenticatedAdminConsignmentsRouteImport } from './routes/_authenticated/admin/consignments'
 import { Route as AuthenticatedAdminSessionsIdLotsRouteImport } from './routes/_authenticated/admin/sessions_.$id.lots'
 
@@ -50,6 +51,11 @@ const RequestAdminRoute = RequestAdminRouteImport.update({
 const LiveRoute = LiveRouteImport.update({
   id: '/live',
   path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -96,11 +102,6 @@ const LotIdRoute = LotIdRouteImport.update({
   path: '/lot/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuctionsUpcomingRoute = AuctionsUpcomingRouteImport.update({
-  id: '/upcoming',
-  path: '/upcoming',
-  getParentRoute: () => AuctionsRoute,
-} as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -133,6 +134,12 @@ const AuthenticatedAdminRequestsRoute =
     path: '/requests',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminRegistrationsRoute =
+  AuthenticatedAdminRegistrationsRouteImport.update({
+    id: '/registrations',
+    path: '/registrations',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminConsignmentsRoute =
   AuthenticatedAdminConsignmentsRouteImport.update({
     id: '/consignments',
@@ -151,17 +158,18 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
-  '/auctions/upcoming': typeof AuctionsUpcomingRoute
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -174,16 +182,17 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
-  '/auctions/upcoming': typeof AuctionsUpcomingRoute
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -198,17 +207,18 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
-  '/auctions/upcoming': typeof AuctionsUpcomingRoute
   '/lot/$id': typeof LotIdRoute
   '/_authenticated/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
+  '/_authenticated/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
   '/_authenticated/admin/requests': typeof AuthenticatedAdminRequestsRoute
   '/_authenticated/admin/sales': typeof AuthenticatedAdminSalesRoute
   '/_authenticated/admin/sessions': typeof AuthenticatedAdminSessionsRoute
@@ -226,14 +236,15 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/dispatch'
     | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
     | '/admin'
-    | '/auctions/upcoming'
     | '/lot/$id'
     | '/admin/consignments'
+    | '/admin/registrations'
     | '/admin/requests'
     | '/admin/sales'
     | '/admin/sessions'
@@ -249,13 +260,14 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/dispatch'
     | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
-    | '/auctions/upcoming'
     | '/lot/$id'
     | '/admin/consignments'
+    | '/admin/registrations'
     | '/admin/requests'
     | '/admin/sales'
     | '/admin/sessions'
@@ -272,14 +284,15 @@ export interface FileRouteTypes {
     | '/auctions'
     | '/auth'
     | '/checkout'
+    | '/dispatch'
     | '/live'
     | '/request-admin'
     | '/sell'
     | '/signin'
     | '/_authenticated/admin'
-    | '/auctions/upcoming'
     | '/lot/$id'
     | '/_authenticated/admin/consignments'
+    | '/_authenticated/admin/registrations'
     | '/_authenticated/admin/requests'
     | '/_authenticated/admin/sales'
     | '/_authenticated/admin/sessions'
@@ -294,9 +307,10 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   ArtistsRoute: typeof ArtistsRoute
-  AuctionsRoute: typeof AuctionsRouteWithChildren
+  AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
+  DispatchRoute: typeof DispatchRoute
   LiveRoute: typeof LiveRoute
   RequestAdminRoute: typeof RequestAdminRoute
   SellRoute: typeof SellRoute
@@ -332,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/live'
       fullPath: '/live'
       preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -397,13 +418,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auctions/upcoming': {
-      id: '/auctions/upcoming'
-      path: '/upcoming'
-      fullPath: '/auctions/upcoming'
-      preLoaderRoute: typeof AuctionsUpcomingRouteImport
-      parentRoute: typeof AuctionsRoute
-    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -446,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRequestsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/registrations': {
+      id: '/_authenticated/admin/registrations'
+      path: '/registrations'
+      fullPath: '/admin/registrations'
+      preLoaderRoute: typeof AuthenticatedAdminRegistrationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/consignments': {
       id: '/_authenticated/admin/consignments'
       path: '/consignments'
@@ -465,6 +486,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminConsignmentsRoute: typeof AuthenticatedAdminConsignmentsRoute
+  AuthenticatedAdminRegistrationsRoute: typeof AuthenticatedAdminRegistrationsRoute
   AuthenticatedAdminRequestsRoute: typeof AuthenticatedAdminRequestsRoute
   AuthenticatedAdminSalesRoute: typeof AuthenticatedAdminSalesRoute
   AuthenticatedAdminSessionsRoute: typeof AuthenticatedAdminSessionsRoute
@@ -476,6 +498,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminConsignmentsRoute: AuthenticatedAdminConsignmentsRoute,
+    AuthenticatedAdminRegistrationsRoute: AuthenticatedAdminRegistrationsRoute,
     AuthenticatedAdminRequestsRoute: AuthenticatedAdminRequestsRoute,
     AuthenticatedAdminSalesRoute: AuthenticatedAdminSalesRoute,
     AuthenticatedAdminSessionsRoute: AuthenticatedAdminSessionsRoute,
@@ -501,27 +524,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface AuctionsRouteChildren {
-  AuctionsUpcomingRoute: typeof AuctionsUpcomingRoute
-}
-
-const AuctionsRouteChildren: AuctionsRouteChildren = {
-  AuctionsUpcomingRoute: AuctionsUpcomingRoute,
-}
-
-const AuctionsRouteWithChildren = AuctionsRoute._addFileChildren(
-  AuctionsRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   ArtistsRoute: ArtistsRoute,
-  AuctionsRoute: AuctionsRouteWithChildren,
+  AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
+  DispatchRoute: DispatchRoute,
   LiveRoute: LiveRoute,
   RequestAdminRoute: RequestAdminRoute,
   SellRoute: SellRoute,

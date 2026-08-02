@@ -22,17 +22,31 @@ export const Route = createFileRoute("/live")({
   component: LivePage,
 });
 
+type SlotState = "live" | "soon" | "closed";
+
+/** A slot is only "open now" when the admin has set it live AND we are inside the window. */
+function slotState(s: any, now: number): SlotState {
+  const start = new Date(s.starts_at).getTime();
+  const end = new Date(s.ends_at).getTime();
+  if (s.status === "ended" || now >= end) return "closed";
+  if (s.status === "live" && now >= start) return "live";
+  return "soon";
+}
+
 function LivePage() {
-  useNow(1000);
+  const now = useNow(1000);
   const fn = useServerFn(listLiveSlots);
-  const { data, isLoading } = useQuery({ queryKey: ["live-slots"], queryFn: () => fn() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["live-slots"],
+    queryFn: () => fn(),
+    refetchInterval: 30_000,
+  });
 
   const sessions = data?.sessions ?? [];
   const lots = data?.lots ?? [];
-  const now = Date.now();
-  const live = sessions.filter((s: any) => s.status === "live" && new Date(s.ends_at).getTime() > now);
-  const soon = sessions.filter((s: any) => s.status === "upcoming" || (s.status === "live" && new Date(s.starts_at).getTime() > now));
-  const past = sessions.filter((s: any) => s.status === "ended" || (s.status !== "upcoming" && new Date(s.ends_at).getTime() <= now));
+  const live = sessions.filter((s: any) => slotState(s, now) === "live");
+  const soon = sessions.filter((s: any) => slotState(s, now) === "soon");
+  const past = sessions.filter((s: any) => slotState(s, now) === "closed");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -67,7 +81,7 @@ function LivePage() {
   );
 }
 
-function Group({ title, empty, sessions, lots, state }: { title: string; empty: string; sessions: any[]; lots: any[]; state: "live" | "soon" | "closed" }) {
+function Group({ title, empty, sessions, lots, state }: { title: string; empty: string; sessions: any[]; lots: any[]; state: SlotState }) {
   if (sessions.length === 0 && !empty) return null;
   return (
     <div>
@@ -75,9 +89,9 @@ function Group({ title, empty, sessions, lots, state }: { title: string; empty: 
       {sessions.length === 0 ? (
         <p className="py-10 text-[13px] text-muted-foreground">{empty}</p>
       ) : (
-        <div className="mt-8 space-y-10">
+        <div className="divide-y divide-border border-b border-border">
           {sessions.map((s) => (
-            <SlotCard key={s.id} session={s} lots={lots.filter((l) => l.session_id === s.id)} state={state} />
+            <SlotRow key={s.id} session={s} lots={lots.filter((l) => l.session_id === s.id)} state={state} />
           ))}
         </div>
       )}
@@ -85,7 +99,7 @@ function Group({ title, empty, sessions, lots, state }: { title: string; empty: 
   );
 }
 
-function SlotCard({ session, lots, state }: { session: any; lots: any[]; state: "live" | "soon" | "closed" }) {
+function SlotRow({ session, lots, state }: { session: any; lots: any[]; state: SlotState }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const regFn = useServerFn(registerForSession);
@@ -94,6 +108,7 @@ function SlotCard({ session, lots, state }: { session: any; lots: any[]; state: 
     queryKey: ["registration", session.id, user?.id],
     queryFn: () => myRegFn({ data: { sessionId: session.id } }),
     enabled: !!user,
+    refetchInterval: 30_000,
   });
   const register = useMutation({
     mutationFn: () => regFn({ data: { sessionId: session.id } }),
@@ -103,64 +118,75 @@ function SlotCard({ session, lots, state }: { session: any; lots: any[]; state: 
 
   const minutes = session.duration_minutes ?? Math.round((new Date(session.ends_at).getTime() - new Date(session.starts_at).getTime()) / 60000);
   const durationLabel = minutes >= 60 ? `${Math.round((minutes / 60) * 10) / 10} hr slot` : `${minutes} min slot`;
+  const startPassed = Date.now() >= new Date(session.starts_at).getTime();
 
   return (
-    <article className="border border-border">
-      <div className="grid md:grid-cols-[1fr_auto] gap-6 p-8 border-b border-border">
-        <div>
-          <div className="flex items-center gap-3">
-            {state === "live" && <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse" /> Bidding open</span>}
-            {state === "soon" && <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Opens in {formatCountdown(session.starts_at)}</span>}
-            {state === "closed" && <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Closed</span>}
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">· {durationLabel}</span>
-          </div>
-          <h3 className="mt-3 font-serif text-3xl">{session.title}</h3>
-          {session.description && <p className="mt-3 max-w-2xl text-[14px] text-muted-foreground leading-relaxed">{session.description}</p>}
-          <div className="mt-5 font-mono text-[11px] text-muted-foreground">
-            {new Date(session.starts_at).toLocaleString()} → {new Date(session.ends_at).toLocaleString()}
-          </div>
+    <article className="grid lg:grid-cols-[minmax(260px,340px)_1fr_auto] gap-8 py-8 items-start">
+      {/* Column 1 — the slot */}
+      <div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {state === "live" && <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse" /> Bidding open</span>}
+          {state === "soon" && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              {startPassed ? "Awaiting host to open" : <>Opens in {formatCountdown(session.starts_at)}</>}
+            </span>
+          )}
+          {state === "closed" && <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Closed</span>}
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">· {durationLabel}</span>
         </div>
-        <div className="md:text-right space-y-3">
-          {state === "live" && (
-            <div className="font-mono text-[11px] uppercase tracking-[0.22em]">Closes in <span className="text-red-500">{formatCountdown(session.ends_at)}</span></div>
-          )}
-          {state !== "closed" && (
-            !user ? (
-              <Link to="/auth" search={{ redirect: "/live" }} className="inline-block border border-foreground px-5 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors">Sign in to register</Link>
-            ) : reg?.status === "approved" ? (
-              <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">✓ Approved to bid</div>
-            ) : reg?.status === "pending" ? (
-              <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Registration pending approval</div>
-            ) : reg?.status === "rejected" ? (
-              <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-red-500">Registration declined</div>
-            ) : (
-              <button onClick={() => register.mutate()} disabled={register.isPending} className="border border-foreground px-5 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors disabled:opacity-50">
-                {register.isPending ? "Requesting…" : "Register to bid"}
-              </button>
-            )
-          )}
+        <h3 className="mt-3 font-serif text-3xl leading-tight">{session.title}</h3>
+        {session.description && <p className="mt-3 text-[13.5px] text-muted-foreground leading-relaxed">{session.description}</p>}
+        <div className="mt-4 font-mono text-[11px] text-muted-foreground">
+          {new Date(session.starts_at).toLocaleString()} → {new Date(session.ends_at).toLocaleString()}
         </div>
       </div>
 
-      {lots.length > 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4">
-          {lots.map((l) => (
-            <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group border-r border-b border-border last:border-r-0 p-5 hover:bg-muted/40 transition-colors">
-              {l.image_url && (
-                <div className="aspect-[4/5] bg-muted overflow-hidden mb-4">
-                  <img src={l.image_url} alt={`${l.artist} — ${l.title}`} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+      {/* Column 2 — lots, horizontal rail */}
+      <div className="min-w-0">
+        {lots.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">Lots for this slot are being catalogued.</p>
+        ) : (
+          <div className="flex gap-5 overflow-x-auto pb-2">
+            {lots.map((l) => (
+              <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group shrink-0 w-[180px]">
+                {l.image_url && (
+                  <div className="aspect-[4/5] bg-muted overflow-hidden mb-3">
+                    <img src={l.image_url} alt={`${l.artist} — ${l.title}`} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+                  </div>
+                )}
+                <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Lot {l.lot_number}</div>
+                <div className="mt-1 text-[12.5px] font-medium truncate">{l.artist}</div>
+                <div className="font-serif text-[15px] italic leading-tight truncate">{l.title}</div>
+                <div className="mt-2 font-mono text-[11px] text-muted-foreground">
+                  {state === "live" ? "Current" : "Opening"} {formatBid(state === "live" ? l.current_bid : l.starting_bid)}
                 </div>
-              )}
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Lot {l.lot_number}</div>
-              <div className="mt-1.5 text-[13px] font-medium">{l.artist}</div>
-              <div className="font-serif text-lg italic leading-tight">{l.title}</div>
-              <div className="mt-3 font-mono text-[11px] text-muted-foreground">
-                {state === "live" ? "Current" : "Opening"} {formatBid(state === "live" ? l.current_bid : l.starting_bid)}
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Column 3 — status / action */}
+      <div className="lg:text-right space-y-3 lg:w-[220px]">
+        {state === "live" && (
+          <div className="font-mono text-[11px] uppercase tracking-[0.22em]">Closes in <span className="text-red-500">{formatCountdown(session.ends_at)}</span></div>
+        )}
+        {state !== "closed" && (
+          !user ? (
+            <Link to="/auth" search={{ redirect: "/live" }} className="inline-block border border-foreground px-5 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors">Sign in to register</Link>
+          ) : reg?.status === "approved" ? (
+            <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">✓ Approved to bid</div>
+          ) : reg?.status === "pending" ? (
+            <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Registration pending approval</div>
+          ) : reg?.status === "rejected" ? (
+            <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-red-500">Registration declined</div>
+          ) : (
+            <button onClick={() => register.mutate()} disabled={register.isPending} className="border border-foreground px-5 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors disabled:opacity-50">
+              {register.isPending ? "Requesting…" : "Register to bid"}
+            </button>
+          )
+        )}
+      </div>
     </article>
   );
 }

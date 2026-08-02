@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { adminListNotifications, adminListRequests, adminListConsignments, adminListAllSessions, adminListCommissions } from "@/lib/auction.functions";
+import { adminListNotifications, adminListRequests, adminListConsignments, adminListAllSessions, adminListCommissions, adminListRegistrations } from "@/lib/auction.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Admin — Kalashetra" }] }),
@@ -15,23 +15,27 @@ function AdminIndex() {
   const fCon = useServerFn(adminListConsignments);
   const fSes = useServerFn(adminListAllSessions);
   const fCom = useServerFn(adminListCommissions);
+  const fReg = useServerFn(adminListRegistrations);
 
   const notif = useQuery({ queryKey: ["admin", "notif"], queryFn: () => fNotif() });
   const req = useQuery({ queryKey: ["admin", "req"], queryFn: () => fReq() });
   const con = useQuery({ queryKey: ["admin", "con"], queryFn: () => fCon() });
   const ses = useQuery({ queryKey: ["admin", "ses"], queryFn: () => fSes() });
   const com = useQuery({ queryKey: ["admin", "com"], queryFn: () => fCom() });
+  const reg = useQuery({ queryKey: ["admin", "registrations"], queryFn: () => fReg({ data: {} }), refetchInterval: 20_000 });
 
   const pendingReq = (req.data ?? []).filter((r: any) => r.status === "pending").length;
+  const pendingReg = (reg.data ?? []).filter((r: any) => r.status === "pending").length;
   const pendingCon = (con.data ?? []).filter((c: any) => c.status === "pending").length;
   const liveSes = (ses.data ?? []).filter((s: any) => s.status === "live").length;
   const totalCommission = (com.data ?? []).reduce((a: number, c: any) => a + Number(c.commission_amount || 0), 0);
 
   const cards = [
     { label: "Sessions", to: "/admin/sessions", value: ses.data?.length ?? 0, sub: `${liveSes} live` },
+    { label: "Bidder Registrations", to: "/admin/registrations", value: pendingReg, sub: "awaiting approval" },
     { label: "Admin Requests", to: "/admin/requests", value: pendingReq, sub: "pending" },
     { label: "Consignments", to: "/admin/consignments", value: pendingCon, sub: "to verify" },
-    { label: "Commission Owed", to: "/admin/sales", value: "$" + totalCommission.toLocaleString(), sub: "→ 9346739056@ybl" },
+    { label: "Commission Owed", to: "/admin/sales", value: "₹" + totalCommission.toLocaleString("en-IN"), sub: "→ 9346739056@ybl" },
   ];
 
   return (
@@ -40,7 +44,7 @@ function AdminIndex() {
       <h1 className="mt-4 font-serif text-5xl md:text-6xl tracking-tight">Dashboard</h1>
       <p className="mt-3 text-[14px] text-muted-foreground max-w-2xl">Manage sessions, lots, approvals, and commission ledger.</p>
 
-      <div className="mt-10 grid gap-4 md:grid-cols-4">
+      <div className="mt-10 grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => (
           <Link key={c.label} to={c.to as any} className="border border-border p-6 hover:border-foreground transition-colors">
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{c.label}</div>
