@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { adminListUsers, adminSetRole } from "@/lib/auction.functions";
+import { adminListUsers, adminSetRole, adminRemoveUser } from "@/lib/auction.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   head: () => ({ meta: [{ title: "Users — Admin" }] }),
@@ -14,11 +14,17 @@ function AdminUsers() {
   const { isOwner } = useAuth();
   const list = useServerFn(adminListUsers);
   const setRole = useServerFn(adminSetRole);
+  const removeUser = useServerFn(adminRemoveUser);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["admin", "users"], queryFn: () => list() });
   const m = useMutation({
     mutationFn: (p: { userId: string; grant: boolean }) => setRole({ data: p }),
     onSuccess: () => { toast.success("Roles updated"); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const rm = useMutation({
+    mutationFn: (userId: string) => removeUser({ data: { userId } }),
+    onSuccess: () => { toast.success("User removed"); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -44,6 +50,7 @@ function AdminUsers() {
                 ))}
               </div>
               {isOwner && !isOwnerRow && (
+                <div className="flex gap-2">
                 <button
                   disabled={m.isPending}
                   onClick={() => m.mutate({ userId: u.id, grant: !isAdmin })}
@@ -53,6 +60,14 @@ function AdminUsers() {
                 >
                   {isAdmin ? "Remove admin" : "Make admin"}
                 </button>
+                <button
+                  disabled={rm.isPending}
+                  onClick={() => { if (confirm(`Permanently remove ${u.email}? This deletes their account.`)) rm.mutate(u.id); }}
+                  className="border border-border px-4 py-2.5 text-[10px] uppercase tracking-[0.18em] hover:border-red-500 hover:text-red-500 disabled:opacity-50"
+                >
+                  Remove
+                </button>
+                </div>
               )}
             </li>
           );
