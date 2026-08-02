@@ -16,9 +16,9 @@ export function SiteHeader() {
   };
 
   const navItems = [
-    { to: "/auctions", label: "Live Auctions" },
+    { to: "/auctions", label: "Auctions" },
     { to: "/live", label: "Live Bidding" },
-    { to: "/auctions/upcoming", label: "Upcoming" },
+    { to: "/dispatch", label: "Dispatch" },
     { to: "/sell", label: "Sell" },
     { to: "/about", label: "About" },
   ];
@@ -99,7 +99,6 @@ export function SiteFooter() {
           <ul className="space-y-2 text-[13px]">
             <li><Link to="/auctions" className="hover:opacity-70">Live now</Link></li>
             <li><Link to="/live" className="hover:opacity-70">Live bidding slots</Link></li>
-            <li><Link to="/auctions/upcoming" className="hover:opacity-70">Upcoming</Link></li>
 
           </ul>
         </div>
@@ -107,6 +106,7 @@ export function SiteFooter() {
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground mb-3">Company</div>
           <ul className="space-y-2 text-[13px]">
             <li><Link to="/about" className="hover:opacity-70">About</Link></li>
+            <li><Link to="/dispatch" className="hover:opacity-70">The Dispatch</Link></li>
             <li><Link to="/sell" className="hover:opacity-70">Sell with us</Link></li>
             <li><Link to="/request-admin" className="hover:opacity-70">Become admin</Link></li>
           </ul>
