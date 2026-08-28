@@ -22,47 +22,44 @@ export const askConcierge = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const { chat } = await import("./ai.server");
-    const { getDispatches } = await import("./ai.server");
+    const { chat, getCachedDispatches, FAST_MODEL } = await import("./ai.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const query = data.messages[data.messages.length - 1]!.content.toLowerCase();
     const terms = query.split(/[^a-z0-9]+/).filter((t) => t.length > 3);
 
-    const { data: sessions } = await supabaseAdmin
-      .from("auction_sessions")
-      .select("id, title, description, status, mode, starts_at, ends_at")
-      .neq("status", "draft")
-      .order("starts_at", { ascending: false })
-      .limit(12);
-    const { data: lots } = await supabaseAdmin
-      .from("lots")
-      .select("id, lot_number, artist, title, year, medium, dimensions, category, current_bid, starting_bid, status, session_id, description")
-      .limit(150);
+    const [{ data: sessions }, { data: lots }] = await Promise.all([
+      supabaseAdmin
+        .from("auction_sessions")
+        .select("id, title, status, mode, starts_at, ends_at")
+        .neq("status", "draft")
+        .order("starts_at", { ascending: false })
+        .limit(8),
+      supabaseAdmin
+        .from("lots")
+        .select("id, lot_number, artist, title, year, medium, category, current_bid, starting_bid, status")
+        .limit(60),
+    ]);
 
     const score = (text: string) => terms.reduce((n, t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
     const rankedLots = (lots ?? [])
-      .map((l: any) => ({ l, s: score([l.artist, l.title, l.medium, l.category, l.description].join(" ")) }))
+      .map((l: any) => ({ l, s: score([l.artist, l.title, l.medium, l.category].join(" ")) }))
       .sort((a, b) => b.s - a.s)
-      .slice(0, 14)
+      .slice(0, 10)
       .map(({ l }: any) => l);
 
-    let dispatchContext = "";
-    try {
-      const d = await getDispatches();
-      const ranked = d
-        .map((a) => ({ a, s: score(a.title + " " + a.standfirst + " " + a.body.join(" ")) }))
-        .sort((x, y) => y.s - x.s)
-        .slice(0, 3);
-      dispatchContext = ranked.map(({ a }) => `- ${a.title}: ${a.standfirst} ${a.body[0] ?? ""}`).join("\n");
-    } catch {
-      dispatchContext = "";
-    }
+    // Use only already-cached editorial: generating it inline made replies slow.
+    const dispatchContext = getCachedDispatches()
+      .map((a) => ({ a, s: score(a.title + " " + a.standfirst) }))
+      .sort((x, y) => y.s - x.s)
+      .slice(0, 3)
+      .map(({ a }) => `- ${a.title}: ${a.standfirst}`)
+      .join("\n");
 
     const sessionContext = (sessions ?? [])
       .map(
         (s: any) =>
-          `- ${s.title} [${s.status}, ${s.mode === "short" ? "live bidding slot" : "standard"}] ${new Date(s.starts_at).toISOString()} → ${new Date(s.ends_at).toISOString()} :: ${s.description ?? ""}`,
+          `- ${s.title} [${s.status}, ${s.mode === "short" ? "live bidding slot" : "standard"}] ${new Date(s.starts_at).toISOString()} → ${new Date(s.ends_at).toISOString()}`,
       )
       .join("\n");
     const lotContext = rankedLots
@@ -88,7 +85,10 @@ ${dispatchContext || "(none)"}
 Style: concise, warm, specialist. Max 120 words. Plain text, no markdown headings. Cite lot numbers and link paths like /lot/<id> when relevant.`;
 
     try {
-      const reply = await chat([{ role: "system", content: system }, ...data.messages]);
+      const reply = await chat([{ role: "system", content: system }, ...data.messages.slice(-6)], {
+        model: FAST_MODEL,
+        maxTokens: 400,
+      });
       return { reply };
     } catch (e: any) {
       return { reply: "", error: e?.message ?? "The concierge is unavailable right now." };
