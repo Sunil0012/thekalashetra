@@ -45,6 +45,17 @@ export async function findOrCreateUser(googleUser: {
     account_status: "pending",
   });
 
+  // Make the first user the owner automatically
+  const { count } = await supabaseAdmin
+    .from("profiles")
+    .select("id", { count: "exact", head: true });
+
+  if (count === 1) {
+    // First user ever — make them owner and approve
+    await supabaseAdmin.from("user_roles").insert({ user_id: googleUser.id, role: "owner" });
+    await supabaseAdmin.from("profiles").update({ account_status: "approved" }).eq("id", googleUser.id);
+  }
+
   return {
     id: googleUser.id,
     email: googleUser.email,
