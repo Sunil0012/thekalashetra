@@ -3,13 +3,20 @@ const MODEL = "openai/gpt-5.6-sol";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export async function chat(messages: ChatMessage[]): Promise<string> {
+export const FAST_MODEL = "google/gemini-2.5-flash";
+
+export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
   const key = process.env["LOVABLE_API_KEY"];
   if (!key) throw new Error("AI is not configured yet.");
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: MODEL, reasoning_effort: "none", messages }),
+    body: JSON.stringify({
+      model: opts?.model ?? MODEL,
+      reasoning_effort: "none",
+      ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+      messages,
+    }),
   });
   if (res.status === 429) throw new Error("Too many requests right now — please try again in a moment.");
   if (res.status === 402) throw new Error("AI credits exhausted. Please top up to continue.");
@@ -33,6 +40,10 @@ const TTL = 6 * 60 * 60 * 1000;
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70);
+}
+
+export function getCachedDispatches(): Dispatch[] {
+  return cache?.items ?? [];
 }
 
 export async function getDispatches(force = false): Promise<Dispatch[]> {
