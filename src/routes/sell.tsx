@@ -1,8 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 
 export const Route = createFileRoute("/sell")({
+  beforeLoad: async () => {
+    const { getCurrentSession } = await import("@/auth/functions");
+    const session = await getCurrentSession();
+    if (!session) throw redirect({ to: "/auth", search: { redirect: "/sell" } });
+  },
   head: () => ({
     meta: [
       { title: "Sell at Kalashetra — Consignment" },

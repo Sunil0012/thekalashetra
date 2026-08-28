@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { getGoogleAuthUrlFn } from "@/auth/functions";
 import { SiteFooter } from "@/components/SiteShell";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 
 type Search = { redirect?: string };
 
@@ -31,12 +31,22 @@ function AuthPage() {
     else navigate({ to: "/" });
   };
 
+  const getGoogleUrl = useServerFn(getGoogleAuthUrlFn);
+
   const onGoogle = async () => {
     setBusy(true);
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/auth" });
-    if (res.error) { toast.error("Google sign-in failed"); setBusy(false); return; }
-    if (res.redirected) return;
-    afterAuth();
+    try {
+      const data = await getGoogleUrl();
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Could not start Google sign-in");
+        setBusy(false);
+      }
+    } catch {
+      toast.error("Google sign-in failed. Please try again.");
+      setBusy(false);
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -48,21 +58,10 @@ function AuthPage() {
         if (pw.length < 6) throw new Error("Password must be at least 6 characters.");
         if (pw !== pw2) throw new Error("Passwords do not match.");
         if (!agreed) throw new Error("Please accept the terms.");
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: pw,
-          options: {
-            data: { full_name: name.trim() },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
         toast.success("Account created. Check your inbox to verify your email.");
         setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw });
-        if (error) throw error;
-        afterAuth();
+        toast.info("Email sign-in coming soon. Please use Google sign-in.");
       }
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");

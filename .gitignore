@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Database
+kalashetra.db
+kalashetra.db-wal
+kalashetra.db-shm
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
@@ -30,3 +35,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env

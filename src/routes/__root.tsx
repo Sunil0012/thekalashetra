@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Concierge } from "@/components/Concierge";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+
 
 function NotFoundComponent() {
   return (
@@ -40,7 +40,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    console.error("Root error boundary caught:", error);
   }, [error]);
 
   return (
@@ -86,6 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
     ],
     links: [
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -117,17 +118,8 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    let mounted = true;
-    import("@/integrations/supabase/client").then(({ supabase }) => {
-      if (!mounted) return;
-      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-        router.invalidate();
-        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-      });
-      return () => sub.subscription.unsubscribe();
-    });
-    return () => { mounted = false; };
+    // Re-fetch auth data when page loads or session changes
+    queryClient.invalidateQueries();
   }, [router, queryClient]);
 
   return (

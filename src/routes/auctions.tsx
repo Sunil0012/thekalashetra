@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useSearch } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,6 +12,11 @@ type Search = { q?: string; cat?: string; sort?: string };
 const SORTS = ["Ending Soon", "Price · High → Low", "Price · Low → High", "Lot Number"] as const;
 
 export const Route = createFileRoute("/auctions")({
+  beforeLoad: async () => {
+    const { getCurrentSession } = await import("@/auth/functions");
+    const session = await getCurrentSession();
+    if (!session) throw redirect({ to: "/auth", search: { redirect: "/auctions" } });
+  },
   validateSearch: (s: Record<string, unknown>): Search => ({
     q: typeof s.q === "string" ? s.q : undefined,
     cat: typeof s.cat === "string" ? s.cat : undefined,

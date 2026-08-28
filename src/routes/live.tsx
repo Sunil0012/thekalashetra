@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -9,6 +9,11 @@ import { useNow } from "@/hooks/use-now";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/live")({
+  beforeLoad: async () => {
+    const { getCurrentSession } = await import("@/auth/functions");
+    const session = await getCurrentSession();
+    if (!session) throw redirect({ to: "/auth", search: { redirect: "/live" } });
+  },
   head: () => ({
     meta: [
       { title: "Live Bidding Slots — Kalashetra" },

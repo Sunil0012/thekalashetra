@@ -1,49 +1,64 @@
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getCurrentSession } from "@/auth/functions";
 
 export type Role = "owner" | "admin" | "user";
 export type AccountStatus = "pending" | "approved" | "suspended";
 
+type SessionUser = {
+  userId: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  accountStatus: AccountStatus;
+  roles: Role[];
+};
+
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [accountStatus, setAccountStatus] = useState<AccountStatus | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const getSession = useServerFn(getCurrentSession);
 
   useEffect(() => {
     let mounted = true;
 
-    const load = async (uid: string) => {
-      const [{ data: rolesData }, { data: profile }] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("profiles").select("account_status").eq("id", uid).maybeSingle(),
-      ]);
-      if (!mounted) return;
-      setRoles((rolesData ?? []).map((r: any) => r.role as Role));
-      setAccountStatus((profile?.account_status as AccountStatus) ?? "pending");
+    const loadSession = async () => {
+      try {
+        const data = await getSession();
+        if (!mounted) return;
+        if (data) {
+          setUser({
+            userId: data.userId,
+            email: data.email,
+            fullName: data.fullName,
+            avatarUrl: data.avatarUrl,
+            accountStatus: data.accountStatus as AccountStatus,
+            roles: data.roles as Role[],
+          });
+        } else {
+          setUser(null);
+        }
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      const u = data.session?.user ?? null;
-      setUser(u);
-      if (u) await load(u.id);
-      if (mounted) setLoading(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) setTimeout(() => load(u.id), 0);
-      else { setRoles([]); setAccountStatus(null); }
-    });
-
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
+    loadSession();
+    return () => { mounted = false; };
   }, []);
 
-  const isAdmin = roles.includes("admin") || roles.includes("owner");
-  const isOwner = roles.includes("owner");
-  const isApproved = accountStatus === "approved" || isAdmin;
-  return { user, roles, isAdmin, isOwner, accountStatus, isApproved, loading };
+  const isAdmin = user?.roles.includes("admin") || user?.roles.includes("owner") || false;
+  const isOwner = user?.roles.includes("owner") || false;
+  const isApproved = user?.accountStatus === "approved" || isAdmin;
+
+  // Provide a compatible user object for existing code
+  const compatUser = user ? {
+    id: user.userId,
+    email: user.email,
+    user_metadata: { full_name: user.fullName },
+  } : null;
+
+  return { user: compatUser, roles: user?.roles ?? [], isAdmin, isOwner, accountStatus: user?.accountStatus ?? null, isApproved, loading };
 }

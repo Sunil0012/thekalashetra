@@ -1,19 +1,22 @@
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "openai/gpt-5.6-sol";
+// Use OpenAI API directly (works on Vercel)
+const GATEWAY = "https://api.openai.com/v1/chat/completions";
+const MODEL = "gpt-4o-mini";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export const FAST_MODEL = "google/gemini-2.5-flash";
+export const FAST_MODEL = "gpt-4o-mini";
 
 export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI is not configured yet.");
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    // Fallback: return a helpful message instead of throwing
+    throw new Error("AI is not configured. Please add an OPENAI_API_KEY environment variable in your Vercel dashboard.");
+  }
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model: opts?.model ?? MODEL,
-      reasoning_effort: "none",
       ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
       messages,
     }),
@@ -81,9 +84,7 @@ async function writePiece(idx: number, dateISO: string): Promise<Dispatch | null
       { role: "system", content: SYSTEM },
       {
         role: "user",
-        content: `Write today's (${dateISO}) piece: ${b.brief}.
-Return JSON exactly: {"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4","p5"],"readMinutes":number,"sources":[{"publication":"real outlet or institution","note":"what it contributes, under 90 chars"}]}
-Rules: 5 body paragraphs of 60-85 words each, dense with concrete detail — names, decades, movements, institutions, how the market or process actually works. 3-4 sources. Plain text, no markdown.`,
+        content: `Write today's (${dateISO}) piece: ${b.brief}.\nReturn JSON exactly: {"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4","p5"],"readMinutes":number,"sources":[{"publication":"real outlet or institution","note":"what it contributes, under 90 chars"}]}\nRules: 5 body paragraphs of 60-85 words each, dense with concrete detail — names, decades, movements, institutions, how the market or process actually works. 3-4 sources. Plain text, no markdown.`,
       },
     ],
     { model: FAST_MODEL, maxTokens: 1600 },
@@ -119,7 +120,6 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
   const day = today();
 
   if (!force && cache) {
-    // Serve instantly; refresh in the background once the day rolls over.
     if (cache.day !== day && !inflight) {
       inflight = buildEdition().finally(() => {
         inflight = null;
@@ -136,4 +136,3 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
   });
   return inflight;
 }
-

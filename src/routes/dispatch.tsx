@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -12,6 +12,11 @@ import img4 from "@/assets/dispatch-4.jpg";
 const IMAGES = [img1, img2, img3, img4];
 
 export const Route = createFileRoute("/dispatch")({
+  beforeLoad: async () => {
+    const { getCurrentSession } = await import("@/auth/functions");
+    const session = await getCurrentSession();
+    if (!session) throw redirect({ to: "/auth", search: { redirect: "/dispatch" } });
+  },
   head: () => ({
     meta: [
       { title: "The Dispatch — Art World Writing | Kalashetra" },

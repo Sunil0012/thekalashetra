@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type Props = {
@@ -18,16 +17,21 @@ export function ImageUpload({ value, onChange, folder = "lots", label = "Image" 
     if (file.size > 8 * 1024 * 1024) { toast.error("Max 8MB."); return; }
     setBusy(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await supabase.storage.from("lot-images").upload(path, file, { upsert: false, contentType: file.type });
-      if (error) throw error;
-      const { data } = supabase.storage.from("lot-images").getPublicUrl(path);
-      onChange(data.publicUrl);
-      toast.success("Image uploaded");
+      // Convert to base64 data URL for now (local storage)
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        onChange(dataUrl);
+        toast.success("Image loaded");
+        setBusy(false);
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read file");
+        setBusy(false);
+      };
+      reader.readAsDataURL(file);
     } catch (e: any) {
       toast.error(e?.message ?? "Upload failed");
-    } finally {
       setBusy(false);
     }
   };
@@ -51,7 +55,7 @@ export function ImageUpload({ value, onChange, folder = "lots", label = "Image" 
           />
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={() => ref.current?.click()} className="border border-border px-4 py-2.5 text-[10px] uppercase tracking-[0.18em] hover:border-foreground disabled:opacity-50">
-              {busy ? "Uploading…" : value ? "Replace file" : "Upload from system"}
+              {busy ? "Loading…" : value ? "Replace file" : "Upload from system"}
             </button>
             {value && (
               <button type="button" onClick={() => onChange("")} className="border border-border px-4 py-2.5 text-[10px] uppercase tracking-[0.18em] hover:border-red-500 hover:text-red-500">Remove</button>

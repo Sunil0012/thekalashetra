@@ -23,7 +23,7 @@ export const askConcierge = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { chat, getCachedDispatches, FAST_MODEL } = await import("./ai.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/db/supabase-client");
 
     const query = data.messages[data.messages.length - 1]!.content.toLowerCase();
     const terms = query.split(/[^a-z0-9]+/).filter((t) => t.length > 3);
@@ -48,7 +48,6 @@ export const askConcierge = createServerFn({ method: "POST" })
       .slice(0, 10)
       .map(({ l }: any) => l);
 
-    // Use only already-cached editorial: generating it inline made replies slow.
     const dispatchContext = getCachedDispatches()
       .map((a) => ({ a, s: score(a.title + " " + a.standfirst) }))
       .sort((x, y) => y.s - x.s)

@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { signOutFn } from "@/auth/functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Shield } from "lucide-react";
 
@@ -9,6 +10,7 @@ export function SiteHeader() {
   const { location } = useRouterState();
   const [q, setQ] = useState("");
   const { user, isAdmin } = useAuth();
+  const signOut = useServerFn(signOutFn);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,13 +18,12 @@ export function SiteHeader() {
   };
 
   const navItems = [
-    { to: "/auctions", label: "Auctions" },
-    { to: "/live", label: "Live Bidding" },
-    { to: "/dispatch", label: "Dispatch" },
-    { to: "/sell", label: "Sell" },
-    { to: "/about", label: "About" },
+    { to: "/auctions", label: "Auctions", protected: true },
+    { to: "/live", label: "Live Bidding", protected: true },
+    { to: "/dispatch", label: "Dispatch", protected: true },
+    { to: "/sell", label: "Sell", protected: true },
+    { to: "/about", label: "About", protected: false },
   ];
-
 
   return (
     <header className="border-b border-border bg-background">
@@ -30,8 +31,9 @@ export function SiteHeader() {
         <nav className="hidden md:flex items-center gap-8 text-[11px] font-medium uppercase tracking-[0.18em]">
           {navItems.map((n) => {
             const active = location.pathname === n.to;
+            const href = n.protected && !user ? { to: "/auth", search: { redirect: n.to } } : { to: n.to };
             return (
-              <Link key={n.to} to={n.to} className={active ? "text-foreground" : "text-muted-foreground hover:text-foreground transition-colors"}>
+              <Link key={n.to} {...href} className={active ? "text-foreground" : "text-muted-foreground hover:text-foreground transition-colors"}>
                 {n.label}
               </Link>
             );
@@ -59,7 +61,7 @@ export function SiteHeader() {
                 Account
               </Link>
               <button
-                onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}
+                onClick={async () => { await signOut(); navigate({ to: "/" }); }}
                 className="border border-foreground px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors"
               >
                 Sign Out
@@ -74,9 +76,12 @@ export function SiteHeader() {
       </div>
       <div className="md:hidden border-t border-border">
         <nav className="mx-auto max-w-[1400px] px-6 py-3 flex items-center gap-6 overflow-x-auto text-[11px] font-medium uppercase tracking-[0.18em]">
-          {navItems.map((n) => (
-            <Link key={n.to} to={n.to} className="text-muted-foreground hover:text-foreground whitespace-nowrap">{n.label}</Link>
-          ))}
+          {navItems.map((n) => {
+            const href = n.protected && !user ? { to: "/auth", search: { redirect: n.to } } : { to: n.to };
+            return (
+              <Link key={n.to} {...href} className="text-muted-foreground hover:text-foreground whitespace-nowrap">{n.label}</Link>
+            );
+          })}
           {isAdmin && <Link to="/admin" className="text-foreground whitespace-nowrap">Admin</Link>}
         </nav>
       </div>
@@ -99,7 +104,6 @@ export function SiteFooter() {
           <ul className="space-y-2 text-[13px]">
             <li><Link to="/auctions" className="hover:opacity-70">Live now</Link></li>
             <li><Link to="/live" className="hover:opacity-70">Live bidding slots</Link></li>
-
           </ul>
         </div>
         <div>

@@ -23,6 +23,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LotIdRouteImport } from './routes/lot.$id'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
@@ -102,6 +103,11 @@ const LotIdRoute = LotIdRouteImport.update({
   path: '/lot/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -159,7 +165,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
   '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
@@ -183,13 +190,14 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
   '/request-admin': typeof RequestAdminRoute
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/lot/$id': typeof LotIdRoute
   '/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
   '/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
@@ -208,7 +216,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
   '/live': typeof LiveRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/sell': typeof SellRoute
   '/signin': typeof SigninRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/lot/$id': typeof LotIdRoute
   '/_authenticated/admin/consignments': typeof AuthenticatedAdminConsignmentsRoute
   '/_authenticated/admin/registrations': typeof AuthenticatedAdminRegistrationsRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/signin'
     | '/admin'
+    | '/auth/callback'
     | '/lot/$id'
     | '/admin/consignments'
     | '/admin/registrations'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/request-admin'
     | '/sell'
     | '/signin'
+    | '/auth/callback'
     | '/lot/$id'
     | '/admin/consignments'
     | '/admin/registrations'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/signin'
     | '/_authenticated/admin'
+    | '/auth/callback'
     | '/lot/$id'
     | '/_authenticated/admin/consignments'
     | '/_authenticated/admin/registrations'
@@ -308,7 +320,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   ArtistsRoute: typeof ArtistsRoute
   AuctionsRoute: typeof AuctionsRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   CheckoutRoute: typeof CheckoutRoute
   DispatchRoute: typeof DispatchRoute
   LiveRoute: typeof LiveRoute
@@ -418,6 +430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -524,6 +543,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -531,7 +560,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   ArtistsRoute: ArtistsRoute,
   AuctionsRoute: AuctionsRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   CheckoutRoute: CheckoutRoute,
   DispatchRoute: DispatchRoute,
   LiveRoute: LiveRoute,
