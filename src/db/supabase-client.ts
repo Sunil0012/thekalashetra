@@ -1,13 +1,34 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+let _client: SupabaseClient | null = null;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("[DB] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+function getClient(): SupabaseClient {
+  if (_client) return _client;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "Database not configured. Please add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables in your Vercel dashboard.",
+    );
+  }
+
+  _client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  return _client;
 }
 
-// Server-side Supabase client for database queries (bypasses RLS)
-export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
+// Proxy so supabaseAdmin.from('table') works naturally
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    const client = getClient();
+    const val = (client as any)[prop];
+    if (typeof val === "function") {
+      return val.bind(client);
+    }
+    return val;
+  },
 });

@@ -23,26 +23,35 @@ export const askConcierge = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { chat, getCachedDispatches, FAST_MODEL } = await import("./ai.server");
-    const { supabaseAdmin } = await import("@/db/supabase-client");
 
     const query = data.messages[data.messages.length - 1]!.content.toLowerCase();
     const terms = query.split(/[^a-z0-9]+/).filter((t) => t.length > 3);
 
-    const [{ data: sessions }, { data: lots }] = await Promise.all([
-      supabaseAdmin
-        .from("auction_sessions")
-        .select("id, title, status, mode, starts_at, ends_at")
-        .neq("status", "draft")
-        .order("starts_at", { ascending: false })
-        .limit(8),
-      supabaseAdmin
-        .from("lots")
-        .select("id, lot_number, artist, title, year, medium, category, current_bid, starting_bid, status")
-        .limit(60),
-    ]);
+    let sessions: any[] = [];
+    let lots: any[] = [];
+    try {
+      const { supabaseAdmin } = await import("@/db/supabase-client");
+      const [sessionsResult, lotsResult] = await Promise.all([
+        supabaseAdmin
+          .from("auction_sessions")
+          .select("id, title, status, mode, starts_at, ends_at")
+          .neq("status", "draft")
+          .order("starts_at", { ascending: false })
+          .limit(8),
+        supabaseAdmin
+          .from("lots")
+          .select("id, lot_number, artist, title, year, medium, category, current_bid, starting_bid, status")
+          .limit(60),
+      ]);
+      sessions = sessionsResult.data ?? [];
+      lots = lotsResult.data ?? [];
+    } catch (dbError) {
+      // Database not configured — concierge still works without lot context
+      console.warn("[Concierge] Database unavailable:", (dbError as Error).message);
+    }
 
     const score = (text: string) => terms.reduce((n, t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
-    const rankedLots = (lots ?? [])
+    const rankedLots = lots
       .map((l: any) => ({ l, s: score([l.artist, l.title, l.medium, l.category].join(" ")) }))
       .sort((a, b) => b.s - a.s)
       .slice(0, 10)
@@ -55,7 +64,7 @@ export const askConcierge = createServerFn({ method: "POST" })
       .map(({ a }) => `- ${a.title}: ${a.standfirst}`)
       .join("\n");
 
-    const sessionContext = (sessions ?? [])
+    const sessionContext = sessions
       .map(
         (s: any) =>
           `- ${s.title} [${s.status}, ${s.mode === "short" ? "live bidding slot" : "standard"}] ${new Date(s.starts_at).toISOString()} → ${new Date(s.ends_at).toISOString()}`,
