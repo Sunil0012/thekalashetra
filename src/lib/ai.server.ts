@@ -1,31 +1,51 @@
-// Use OpenAI API directly (works on Vercel)
-const GATEWAY = "https://api.openai.com/v1/chat/completions";
-const MODEL = "gpt-4o-mini";
+// Use Google Gemini API
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const MODEL = "gemini-2.0-flash";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export const FAST_MODEL = "gpt-4o-mini";
+export const FAST_MODEL = MODEL;
 
 export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.GEMINI_API_KEY;
   if (!key) {
-    // Fallback: return a helpful message instead of throwing
-    throw new Error("AI is not configured. Please add an OPENAI_API_KEY environment variable in your Vercel dashboard.");
+    throw new Error("AI is not configured. Please add a GEMINI_API_KEY environment variable in your Vercel dashboard.");
   }
-  const res = await fetch(GATEWAY, {
+
+  const model = opts?.model ?? MODEL;
+  const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
+
+  // Convert messages to Gemini format
+  const systemMsg = messages.find((m) => m.role === "system");
+  const conversationMsgs = messages.filter((m) => m.role !== "system");
+
+  const contents = conversationMsgs.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const body: any = {
+    contents,
+    generationConfig: {
+      ...(opts?.maxTokens ? { maxOutputTokens: opts.maxTokens } : {}),
+    },
+  };
+
+  if (systemMsg) {
+    body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+  }
+
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: opts?.model ?? MODEL,
-      ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-      messages,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
+
   if (res.status === 429) throw new Error("Too many requests right now — please try again in a moment.");
-  if (res.status === 402) throw new Error("AI credits exhausted. Please top up to continue.");
   if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`);
+
   const json: any = await res.json();
-  return json?.choices?.[0]?.message?.content ?? "";
+  return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
 export type Source = { publication: string; note: string };
