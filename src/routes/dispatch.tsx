@@ -96,7 +96,7 @@ function DispatchPage() {
             </div>
             <div className="p-8 md:p-12">
               <div className="flex items-start justify-between gap-6">
-                <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{open.kicker} · {open.readMinutes} min read</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{open.kicker} · {open.readMinutes} min read{open.dateline ? ` · ${open.dateline}` : ""}</div>
                 <button onClick={() => setOpenSlug(null)} className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">Close ✕</button>
               </div>
               <h2 className="mt-5 font-serif text-3xl md:text-5xl leading-[1.05] tracking-tight">{open.title}</h2>
@@ -104,7 +104,21 @@ function DispatchPage() {
               <div className="mt-8 space-y-6 text-[15px] leading-[1.8]">
                 {open.body.map((p: string, i: number) => <p key={i}>{p}</p>)}
               </div>
+              {open.sources?.length > 0 && (
+                <div className="mt-12 border-t border-border pt-6">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Reported with reference to</div>
+                  <ul className="mt-4 space-y-2">
+                    {open.sources.map((s: any, i: number) => (
+                      <li key={i} className="text-[13px] leading-relaxed">
+                        <span className="font-medium">{s.publication}</span>
+                        {s.note ? <span className="text-muted-foreground"> — {s.note}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
+
           </article>
         </div>
       )}
