@@ -28,6 +28,19 @@ export async function findOrCreateUser(googleUser: {
       .update({ full_name: googleUser.name, avatar_url: googleUser.picture })
       .eq("id", googleUser.id);
 
+    // If no owner exists yet, make this user the owner
+    const { data: owners } = await supabaseAdmin
+      .from("user_roles")
+      .select("id")
+      .eq("role", "owner")
+      .limit(1);
+
+    if (!owners || owners.length === 0) {
+      await supabaseAdmin.from("user_roles").insert({ user_id: googleUser.id, role: "owner" });
+      await supabaseAdmin.from("profiles").update({ account_status: "approved" }).eq("id", googleUser.id);
+      existing.account_status = "approved";
+    }
+
     return {
       id: existing.id,
       email: existing.email ?? googleUser.email,
