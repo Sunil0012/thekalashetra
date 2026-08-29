@@ -2,14 +2,13 @@
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Model tiers - highest performing first, fallback to lighter models
+// Only using currently available Gemini 3.x models
 const MODEL_TIERS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-3.1-flash-lite",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-3.6-flash",
-  "gemini-3.7-flash",
+  "gemini-3.1-flash-lite",
 ];
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };

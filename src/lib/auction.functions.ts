@@ -49,8 +49,9 @@ export const getLot = createServerFn({ method: "GET" })
   });
 
 export const getCatalogue = createServerFn({ method: "GET" }).handler(async () => {
+  // Fetch all sessions that are not draft (live, upcoming, ended)
   const { data: sessions } = await supabaseAdmin
-    .from("auction_sessions").select("*").eq("status", "live").order("starts_at");
+    .from("auction_sessions").select("*").neq("status", "draft").order("starts_at");
   const ids = (sessions ?? []).map((s: any) => s.id);
   let lots: any[] = [];
   if (ids.length) {
@@ -240,7 +241,7 @@ export const adminUpsertSession = createServerFn({ method: "POST" })
       title: z.string().min(1).max(200),
       slug: z.string().min(1).max(120),
       description: z.string().max(4000).optional(),
-      cover_image: z.string().max(500).optional().nullable(),
+      cover_image: z.string().max(10000).optional().nullable(),
       starts_at: z.string(),
       ends_at: z.string(),
       status: z.enum(["draft", "upcoming", "live", "ended"]),
@@ -286,7 +287,7 @@ export const adminUpsertLot = createServerFn({ method: "POST" })
       provenance: z.string().max(2000).optional(),
       description: z.string().max(4000).optional(),
       category: z.enum(["Painting", "Drawing", "Print", "Mixed Media"]),
-      image_url: z.string().max(500).optional().nullable(),
+      image_url: z.string().max(10000).optional().nullable(),
       starting_bid: z.number().nonnegative(),
     }).parse(d),
   )

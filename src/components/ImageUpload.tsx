@@ -14,26 +14,86 @@ export function ImageUpload({ value, onChange, folder = "lots", label = "Image" 
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) { toast.error("Please choose an image file."); return; }
-    if (file.size > 8 * 1024 * 1024) { toast.error("Max 8MB."); return; }
+    if (file.size > 20 * 1024 * 1024) { toast.error("Image must be under 20MB."); return; }
     setBusy(true);
     try {
-      // Convert to base64 data URL for now (local storage)
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        onChange(dataUrl);
-        toast.success("Image loaded");
-        setBusy(false);
-      };
-      reader.onerror = () => {
-        toast.error("Failed to read file");
-        setBusy(false);
-      };
-      reader.readAsDataURL(file);
+      // Compress image if larger than 2MB for better performance
+      const maxSize = 2 * 1024 * 1024; // 2MB threshold for compression
+      if (file.size > maxSize) {
+        const compressed = await compressImage(file, 1600, 0.85);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          onChange(dataUrl);
+          toast.success("Image loaded and compressed");
+          setBusy(false);
+        };
+        reader.onerror = () => {
+          toast.error("Failed to read file");
+          setBusy(false);
+        };
+        reader.readAsDataURL(compressed);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          onChange(dataUrl);
+          toast.success("Image loaded");
+          setBusy(false);
+        };
+        reader.onerror = () => {
+          toast.error("Failed to read file");
+          setBusy(false);
+        };
+        reader.readAsDataURL(file);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Upload failed");
       setBusy(false);
     }
+  };
+
+  const compressImage = async (file: File, maxWidth: number, quality: number): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+            } else {
+              reject(new Error("Failed to compress image"));
+            }
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Failed to load image"));
+      };
+      img.src = url;
+    });
   };
 
   return (
