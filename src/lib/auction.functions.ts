@@ -113,8 +113,8 @@ export const registerForSession = createServerFn({ method: "POST" })
     await supabaseAdmin.from("admin_notifications").insert({
       kind: "registration",
       title: `Registration request: ${profile?.fullName ?? profile?.email} for "${session?.title ?? "?"}"`,
-      body: `Approve or reject at /admin/sessions`,
-      link: `/admin/sessions`,
+      body: `Approve or reject at /admin/registrations`,
+      link: `/admin/registrations`,
     });
     return { status: "pending" };
   });
@@ -133,10 +133,20 @@ export const adminListRegistrations = createServerFn({ method: "GET" })
   .inputValidator((d: { sessionId?: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    let q = supabaseAdmin.from("auction_registrations").select("*, profiles(full_name, email), auction_sessions(title)").order("created_at", { ascending: false });
+    let q = supabaseAdmin.from("auction_registrations").select("*, auction_sessions(title)").order("created_at", { ascending: false });
     if (data.sessionId) q = q.eq("session_id", data.sessionId);
-    const { data: rows } = await q;
-    return rows ?? [];
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    // user_id is a Google account string and intentionally has no foreign key
+    // to profiles, so PostgREST cannot embed profiles in the query above.
+    const userIds = [...new Set((rows ?? []).map((row: any) => row.user_id).filter(Boolean))];
+    const { data: profiles, error: profilesError } = userIds.length
+      ? await supabaseAdmin.from("profiles").select("id, full_name, email").in("id", userIds)
+      : { data: [], error: null };
+    if (profilesError) throw new Error(profilesError.message);
+    const profileById = new Map((profiles ?? []).map((profile: any) => [profile.id, profile]));
+    return (rows ?? []).map((row: any) => ({ ...row, profiles: profileById.get(row.user_id) ?? null }));
   });
 
 export const adminDecideRegistration = createServerFn({ method: "POST" })
