@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 });
 
 function AdminUsers() {
-  const { isOwner, isAdmin } = useAuth();
+  const { isOwner, isAdmin: currentIsAdmin } = useAuth();
   const list = useServerFn(adminListUsers);
   const setRole = useServerFn(adminSetRole);
   const removeUser = useServerFn(adminRemoveUser);
@@ -48,7 +48,7 @@ function AdminUsers() {
 
       <ul className="mt-10 divide-y divide-border border-y border-border">
         {(data ?? []).map((u: any) => {
-          const isAdmin = u.roles.includes("admin");
+          const rowIsAdmin = u.roles.includes("admin");
           const isOwnerRow = u.roles.includes("owner");
           return (
             <li key={u.id} className="py-5 grid md:grid-cols-[1fr_auto_auto] gap-4 items-center">
@@ -71,16 +71,16 @@ function AdminUsers() {
                   <span key={r} className={`font-mono text-[10px] uppercase tracking-[0.18em] px-3 py-1.5 border ${r === "owner" ? "border-foreground" : "border-border text-muted-foreground"}`}>{r}</span>
                 ))}
               </div>
-              {isAdmin && !isOwnerRow && (
+              {currentIsAdmin && !isOwnerRow && (
                 <div className="flex gap-2">
                 <button
                   disabled={m.isPending}
-                  onClick={() => m.mutate({ userId: u.id, grant: !isAdmin })}
-                  className={isAdmin
+                  onClick={() => m.mutate({ userId: u.id, grant: !rowIsAdmin })}
+                  className={rowIsAdmin
                     ? "border border-border px-4 py-2.5 text-[10px] uppercase tracking-[0.18em] hover:border-red-500 hover:text-red-500"
                     : "bg-foreground text-background px-4 py-2.5 text-[10px] uppercase tracking-[0.18em]"}
                 >
-                  {isAdmin ? "Remove admin" : "Make admin"}
+                  {rowIsAdmin ? "Remove admin" : "Make admin"}
                 </button>
                 <button
                   disabled={rm.isPending}

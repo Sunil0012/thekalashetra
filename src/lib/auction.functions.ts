@@ -415,7 +415,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
 
 export const adminSetRole = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((d: { userId: string; grant: boolean }) => z.object({ userId: z.string().uuid(), grant: z.boolean() }).parse(d))
+  .inputValidator((d: { userId: string; grant: boolean }) => z.object({ userId: z.string().min(1), grant: z.boolean() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertOwner(context.userId);
     const targetRoles = await getUserRoles(data.userId);
