@@ -49,17 +49,19 @@ export const getLot = createServerFn({ method: "GET" })
   });
 
 export const getCatalogue = createServerFn({ method: "GET" }).handler(async () => {
-  // Fetch ALL lots (regardless of session status) so they always show
-  const { data: lots } = await supabaseAdmin
+  // Fetch ALL lots regardless of session status so they always show
+  const { data: lots, error: lotsError } = await supabaseAdmin
     .from("lots").select("*").order("lot_number");
-  
-  // Fetch all sessions for context
-  const { data: sessions } = await supabaseAdmin
+  if (lotsError) throw new Error("Failed to load lots: " + lotsError.message);
+
+  // Fetch all sessions for context (countdowns, etc.)
+  const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("auction_sessions").select("*").order("starts_at");
-  
+  if (sessionsError) throw new Error("Failed to load sessions: " + sessionsError.message);
+
   const sessionsById: Record<string, any> = {};
   for (const s of sessions ?? []) sessionsById[s.id] = s;
-  
+
   return { sessions: sessions ?? [], lots: lots ?? [], sessionsById };
 });
 

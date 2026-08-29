@@ -30,7 +30,7 @@ function AuctionsPage() {
   useNow(30_000);
   const search = useSearch({ from: "/auctions" });
   const fn = useServerFn(getCatalogue);
-  const { data, isLoading } = useQuery({ queryKey: ["catalogue"], queryFn: () => fn() });
+  const { data, isLoading, error } = useQuery({ queryKey: ["catalogue"], queryFn: () => fn() });
 
   const lots = data?.lots ?? [];
   const sessionsById: Record<string, any> = data?.sessionsById ?? {};
@@ -126,11 +126,17 @@ function AuctionsPage() {
       <section className="mx-auto max-w-[1400px] px-6 md:px-10 py-14 pb-24">
         {isLoading ? (
           <div className="py-24 text-center text-muted-foreground text-[13px]">Loading catalogue…</div>
+        ) : error ? (
+          <div className="py-24 text-center border border-border">
+            <p className="font-serif text-2xl italic">Something went wrong loading the catalogue.</p>
+            <p className="mt-4 text-[13px] text-muted-foreground">{(error as any)?.message ?? "Unknown error"}</p>
+          </div>
         ) : visible.length === 0 ? (
           <div className="py-24 text-center border border-border">
-            <p className="font-serif text-2xl italic">No lots match — or no session is live right now.</p>
-            <Link to="/live" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
-              View live bidding slots →
+            <p className="font-serif text-2xl italic">No lots yet.</p>
+            <p className="mt-3 text-[13px] text-muted-foreground">Add lots from the admin panel to see them here.</p>
+            <Link to="/admin/sessions" className="mt-6 inline-block text-[11px] uppercase tracking-[0.18em] underline underline-offset-4">
+              Go to admin →
             </Link>
           </div>
         ) : (
