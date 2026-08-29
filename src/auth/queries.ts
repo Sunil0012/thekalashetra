@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/db/supabase-client";
+import { sendAccountApprovalEmail } from "@/lib/email.server";
 
 export type AppUser = {
   id: string;
@@ -69,12 +70,26 @@ export async function findOrCreateUser(googleUser: {
     await supabaseAdmin.from("profiles").update({ account_status: "approved" }).eq("id", googleUser.id);
   }
 
+  if (count !== 1) {
+    await supabaseAdmin.from("admin_notifications").insert({
+      kind: "account_approval",
+      title: `New account awaiting approval: ${googleUser.name || googleUser.email}`,
+      body: `${googleUser.email} created a Kalashetra account and is waiting for membership approval.`,
+      link: "/admin/users",
+    });
+    try {
+      await sendAccountApprovalEmail({ id: googleUser.id, email: googleUser.email, fullName: googleUser.name });
+    } catch (error) {
+      console.warn("[Account approval email] failed:", (error as Error).message);
+    }
+  }
+
   return {
     id: googleUser.id,
     email: googleUser.email,
     fullName: googleUser.name,
     avatarUrl: googleUser.picture,
-    accountStatus: "pending",
+    accountStatus: count === 1 ? "approved" : "pending",
   };
 }
 

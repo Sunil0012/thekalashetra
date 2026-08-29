@@ -431,7 +431,7 @@ export const adminSetRole = createServerFn({ method: "POST" })
 export const adminSetAccountStatus = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: { userId: string; status: "approved" | "pending" | "suspended" }) =>
-    z.object({ userId: z.string().uuid(), status: z.enum(["approved", "pending", "suspended"]) }).parse(d),
+    z.object({ userId: z.string().min(1), status: z.enum(["approved", "pending", "suspended"]) }).parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -442,16 +442,55 @@ export const adminSetAccountStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const approveAccountFromEmail = createServerFn({ method: "GET" })
+  .inputValidator((d: { token: string; status: "approved" | "suspended" }) =>
+    z.object({ token: z.string().min(1), status: z.enum(["approved", "suspended"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { verifyAccountApprovalToken } = await import("./account-approval");
+    const verified = verifyAccountApprovalToken(data.token);
+    if (!verified) return { ok: false, message: "This approval link is invalid or has expired." };
+    const { error } = await supabaseAdmin.from("profiles").update({ account_status: data.status }).eq("id", verified.userId);
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("admin_notifications").insert({
+      kind: "account_approval",
+      title: `Account ${data.status === "approved" ? "approved" : "rejected"} by email`,
+      body: `User ID: ${verified.userId}`,
+      link: "/admin/users",
+    });
+    return { ok: true, message: data.status === "approved" ? "The member can now bid in standard auctions." : "The account remains unable to bid." };
+  });
+
+export const adminResendAccountApprovalEmail = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { data: profile } = await supabaseAdmin.from("profiles").select("id, email, full_name, account_status").eq("id", data.userId).maybeSingle();
+    if (!profile) throw new Error("User not found");
+    if (profile.account_status !== "pending") throw new Error("This account is not pending approval.");
+    const { sendAccountApprovalEmail } = await import("./email.server");
+    const sent = await sendAccountApprovalEmail({ id: profile.id, email: profile.email, fullName: profile.full_name });
+    if (!sent) throw new Error("Email was not sent. Check RESEND_API_KEY, ADMIN_EMAIL, and MAIL_FROM in Vercel.");
+    return { ok: true };
+  });
+
 export const adminRemoveUser = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
+  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertOwner(context.userId);
+    await assertAdmin(context.userId);
     const targetRoles = await getUserRoles(data.userId);
     if (targetRoles.includes("owner")) throw new Error("Cannot remove the owner.");
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("bids").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+    const deletes = await Promise.all([
+      supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId),
+      supabaseAdmin.from("bids").delete().eq("user_id", data.userId),
+      supabaseAdmin.from("auction_registrations").delete().eq("user_id", data.userId),
+      supabaseAdmin.from("consignments").delete().eq("user_id", data.userId),
+      supabaseAdmin.from("profiles").delete().eq("id", data.userId),
+    ]);
+    const failed = deletes.find((result) => result.error);
+    if (failed?.error) throw new Error(failed.error.message);
     return { ok: true };
   });
 

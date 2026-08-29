@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { adminListNotifications, adminListRequests, adminListConsignments, adminListAllSessions, adminListCommissions, adminListRegistrations } from "@/lib/auction.functions";
+import { adminListNotifications, adminListRequests, adminListConsignments, adminListAllSessions, adminListCommissions, adminListRegistrations, adminListUsers } from "@/lib/auction.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Admin — Kalashetra" }] }),
@@ -16,6 +16,7 @@ function AdminIndex() {
   const fSes = useServerFn(adminListAllSessions);
   const fCom = useServerFn(adminListCommissions);
   const fReg = useServerFn(adminListRegistrations);
+  const fUsers = useServerFn(adminListUsers);
 
   const notif = useQuery({ queryKey: ["admin", "notif"], queryFn: () => fNotif() });
   const req = useQuery({ queryKey: ["admin", "req"], queryFn: () => fReq() });
@@ -23,10 +24,12 @@ function AdminIndex() {
   const ses = useQuery({ queryKey: ["admin", "ses"], queryFn: () => fSes() });
   const com = useQuery({ queryKey: ["admin", "com"], queryFn: () => fCom() });
   const reg = useQuery({ queryKey: ["admin", "registrations"], queryFn: () => fReg({ data: {} }), refetchInterval: 20_000 });
+  const users = useQuery({ queryKey: ["admin", "users"], queryFn: () => fUsers(), refetchInterval: 20_000 });
 
   const pendingReq = (req.data ?? []).filter((r: any) => r.status === "pending").length;
   const pendingReg = (reg.data ?? []).filter((r: any) => r.status === "pending").length;
   const pendingCon = (con.data ?? []).filter((c: any) => c.status === "pending").length;
+  const pendingAccounts = (users.data ?? []).filter((u: any) => u.account_status === "pending").length;
   const liveSes = (ses.data ?? []).filter((s: any) => s.status === "live").length;
   const totalCommission = (com.data ?? []).reduce((a: number, c: any) => a + Number(c.commission_amount || 0), 0);
 
@@ -34,6 +37,7 @@ function AdminIndex() {
     { label: "Sessions", to: "/admin/sessions", value: ses.data?.length ?? 0, sub: `${liveSes} live` },
     { label: "Bidder Registrations", to: "/admin/registrations", value: pendingReg, sub: "awaiting approval" },
     { label: "Admin Requests", to: "/admin/requests", value: pendingReq, sub: "pending" },
+    { label: "Member Approvals", to: "/admin/users", value: pendingAccounts, sub: "awaiting approval" },
     { label: "Consignments", to: "/admin/consignments", value: pendingCon, sub: "to verify" },
     { label: "Commission Owed", to: "/admin/sales", value: "₹" + totalCommission.toLocaleString("en-IN"), sub: "→ 9346739056@ybl" },
   ];

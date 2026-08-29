@@ -18,6 +18,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as ArtistsRouteImport } from './routes/artists'
+import { Route as ApproveAccountRouteImport } from './routes/approve-account'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -77,6 +78,11 @@ const AuctionsRoute = AuctionsRouteImport.update({
 const ArtistsRoute = ArtistsRouteImport.update({
   id: '/artists',
   path: '/artists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApproveAccountRoute = ApproveAccountRouteImport.update({
+  id: '/approve-account',
+  path: '/approve-account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/approve-account': typeof ApproveAccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRouteWithChildren
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/approve-account': typeof ApproveAccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRouteWithChildren
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/approve-account': typeof ApproveAccountRoute
   '/artists': typeof ArtistsRoute
   '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRouteWithChildren
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/account'
+    | '/approve-account'
     | '/artists'
     | '/auctions'
     | '/auth'
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/account'
+    | '/approve-account'
     | '/artists'
     | '/auctions'
     | '/auth'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/about'
     | '/account'
+    | '/approve-account'
     | '/artists'
     | '/auctions'
     | '/auth'
@@ -318,6 +330,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
+  ApproveAccountRoute: typeof ApproveAccountRoute
   ArtistsRoute: typeof ArtistsRoute
   AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRouteWithChildren
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/artists'
       fullPath: '/artists'
       preLoaderRoute: typeof ArtistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approve-account': {
+      id: '/approve-account'
+      path: '/approve-account'
+      fullPath: '/approve-account'
+      preLoaderRoute: typeof ApproveAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -558,6 +578,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
+  ApproveAccountRoute: ApproveAccountRoute,
   ArtistsRoute: ArtistsRoute,
   AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRouteWithChildren,
