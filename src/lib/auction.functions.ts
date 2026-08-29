@@ -49,18 +49,18 @@ export const getLot = createServerFn({ method: "GET" })
   });
 
 export const getCatalogue = createServerFn({ method: "GET" }).handler(async () => {
-  // Fetch all sessions that are not draft (live, upcoming, ended)
+  // Fetch ALL lots (regardless of session status) so they always show
+  const { data: lots } = await supabaseAdmin
+    .from("lots").select("*").order("lot_number");
+  
+  // Fetch all sessions for context
   const { data: sessions } = await supabaseAdmin
-    .from("auction_sessions").select("*").neq("status", "draft").order("starts_at");
-  const ids = (sessions ?? []).map((s: any) => s.id);
-  let lots: any[] = [];
-  if (ids.length) {
-    const { data } = await supabaseAdmin.from("lots").select("*").in("session_id", ids).order("lot_number");
-    lots = data ?? [];
-  }
+    .from("auction_sessions").select("*").order("starts_at");
+  
   const sessionsById: Record<string, any> = {};
   for (const s of sessions ?? []) sessionsById[s.id] = s;
-  return { sessions: sessions ?? [], lots, sessionsById };
+  
+  return { sessions: sessions ?? [], lots: lots ?? [], sessionsById };
 });
 
 // =================== BIDDING ===================
