@@ -41,6 +41,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     console.error("Root error boundary caught:", error);
+
+    // A deployment can replace hashed Vite chunks while an older HTML/JS
+    // document is still open in a browser tab. Reload once so it can fetch
+    // the current document instead of retrying the missing chunk forever.
+    if (error.message.includes("Failed to fetch dynamically imported module")) {
+      const key = "kalashetra_chunk_reload";
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+      } else {
+        sessionStorage.removeItem(key);
+      }
+    }
   }, [error]);
 
   return (
