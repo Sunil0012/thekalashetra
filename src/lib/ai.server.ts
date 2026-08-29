@@ -48,7 +48,7 @@ function getAvailableModel(preferred?: string): string {
   return MODEL_TIERS[0];
 }
 
-export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
+export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number; searchCurrentWeek?: boolean }): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     throw new Error("AI is not configured. Please add a GEMINI_API_KEY environment variable in your Vercel dashboard.");
@@ -82,6 +82,17 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
           ...(opts?.maxTokens ? { maxOutputTokens: opts.maxTokens } : {}),
         },
       };
+
+      if (opts?.searchCurrentWeek) {
+        const end = new Date();
+        const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+        body.tools = [{
+          googleSearch: {
+            timeRangeFilter: { startTime: start.toISOString(), endTime: end.toISOString() },
+            searchTypes: { webSearch: {} },
+          },
+        }];
+      }
 
       if (systemMsg) {
         body.systemInstruction = { parts: [{ text: systemMsg.content }] };
@@ -146,7 +157,7 @@ export async function analyzeImage(imageUrl: string, prompt: string): Promise<st
   return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-export type Source = { publication: string; note: string };
+export type Source = { publication: string; note: string; url?: string };
 
 export type Dispatch = {
   slug: string;
@@ -230,7 +241,7 @@ const BRIEFS = [
 ];
 
 const SYSTEM =
-  "You are the editor of an Indian fine-art auction house's editorial desk. Write factual, well-researched, evergreen art-world journalism. Never invent breaking news, quotes, sale figures, or living collectors' names. Ground everything in well-established art history, market mechanics and the South Asian modern & contemporary scene. For sources, name only real, well-known publications and institutions you are confident cover this subject (e.g. The Art Newspaper, ArtReview, Frieze, Artforum, Ocula, STIR World, The Hindu, Mint Lounge, Scroll.in, Christie's/Sotheby's press archives, museum publications) and describe in one clause what that outlet contributes to the topic — never fabricate article titles, URLs or dates. Return STRICT JSON only, no markdown fences.";
+  "You are the current-affairs editor of an Indian fine-art auction house. Use Google Search grounding for every piece. Write only about verifiable art-world news, exhibition announcements, magazine features, journal research, auction results, or artist profiles published within the last 7 days. Never use old background material as the main story, invent facts, quotes, figures, article titles, dates, or URLs. If there is no genuinely relevant item in the last 7 days, return {\"skip\":true}. Prefer primary institutions and reputable outlets such as The Art Newspaper, ArtReview, Frieze, Artforum, Ocula, STIR World, The Hindu, Mint Lounge, Scroll.in, museum websites, journals, Christie's and Sotheby's. Return STRICT JSON only, no markdown fences.";
 
 function parseJson(text: string): any {
   const raw = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "");
@@ -537,16 +548,16 @@ async function writePiece(idx: number, dateISO: string): Promise<Dispatch | null
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Write today's (${dateISO}) piece: ${b.brief}.\nReturn JSON exactly: {"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4","p5"],"readMinutes":number,"sources":[{"publication":"real outlet or institution","note":"what it contributes, under 90 chars"}]}\nRules: 5 body paragraphs of 60-85 words each, dense with concrete detail — names, decades, movements, institutions, how the market or process actually works. 3-4 sources. Plain text, no markdown.`,
+            content: `Write today's (${dateISO}) piece about this angle: ${b.brief}. Search first and use only sources published from ${(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10)} through ${dateISO}. Return JSON exactly: {"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4","p5"],"readMinutes":number,"sources":[{"publication":"real outlet or institution","note":"what it contributes, under 90 chars","url":"source URL if available"}]} or {"skip":true}. Rules: every factual claim must come from the searched sources; 5 body paragraphs of 60-85 words each; 3-4 sources; include publication dates in the body where useful; no evergreen filler; plain text, no markdown.`,
           },
         ],
-        { model: FAST_MODEL, maxTokens: 1600 },
+        { model: FAST_MODEL, maxTokens: 1600, searchCurrentWeek: true },
       ),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
     ]);
 
     const i = parseJson(text);
-    if (!i?.title) return null;
+    if (!i?.title || i?.skip) return null;
 
     const imageIndex = idx % STOCK_IMAGES.length;
 
@@ -563,7 +574,7 @@ async function writePiece(idx: number, dateISO: string): Promise<Dispatch | null
       sessionId: b.session,
       sources: (Array.isArray(i.sources) ? i.sources : [])
         .slice(0, 4)
-        .map((s: any) => ({ publication: String(s?.publication ?? "").slice(0, 80), note: String(s?.note ?? "").slice(0, 140) }))
+        .map((s: any) => ({ publication: String(s?.publication ?? "").slice(0, 80), note: String(s?.note ?? "").slice(0, 140), url: typeof s?.url === "string" ? s.url.slice(0, 1000) : undefined }))
         .filter((s: Source) => s.publication),
     };
   } catch {
@@ -584,7 +595,7 @@ async function runBatched<T>(tasks: (() => Promise<T>)[], batchSize: number): Pr
 
 async function buildEdition(): Promise<Dispatch[]> {
   const day = today();
-  const taskFns = BRIEFS.map((_, idx) => () => writePiece(idx, day));
+  const taskFns = BRIEFS.slice(0, 6).map((_, idx) => () => writePiece(idx, day));
   const results = await runBatched(taskFns, 3);
   const items = results.filter(Boolean) as Dispatch[];
   if (items.length) cache = { day, at: Date.now(), items };
@@ -608,12 +619,10 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
   // 3. Start a background build — but DON'T block the caller
   //    Return fallback content now, let the build populate cache for next visit
   if (!force && !cache) {
-    // No cache yet (first visit today or first ever) — fire and forget the build
     inflight = buildEdition().finally(() => {
       inflight = null;
     });
-    // Return fallback immediately so the page renders
-    return FALLBACK_DISPATCHES;
+    return inflight;
   }
 
   // 4. Force refresh
@@ -623,5 +632,5 @@ export async function getDispatches(force = false): Promise<Dispatch[]> {
   inflight = buildEdition().finally(() => {
     inflight = null;
   });
-  return cache?.items ?? FALLBACK_DISPATCHES;
+  return inflight;
 }

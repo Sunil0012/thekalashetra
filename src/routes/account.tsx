@@ -14,7 +14,7 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   const navigate = useNavigate();
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, accountStatus } = useAuth();
   const fn = useServerFn(getMyAccount);
   const { data, isLoading } = useQuery({ queryKey: ["my-account"], queryFn: () => fn(), enabled: !!user });
 
@@ -36,6 +36,12 @@ function AccountPage() {
         <div className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Account</div>
         <h1 className="font-serif text-5xl md:text-6xl tracking-tight mt-6">Welcome, {name.split(" ")[0]}.</h1>
         <p className="mt-4 text-[14px] text-muted-foreground">{user.email}</p>
+        {accountStatus === "pending" && (
+          <div className="mt-6 max-w-2xl border border-border p-5 text-[13px] leading-relaxed">
+            <div className="font-mono text-[10px] uppercase tracking-[0.22em]">Membership pending approval</div>
+            <p className="mt-3 text-muted-foreground">Your account is under review by the Kalashetra team. You can browse the catalogue now; once approved, you can bid in standard auctions. Live bidding slots require a separate request to the admin.</p>
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap gap-4">
           {isAdmin ? (
             <Link to="/admin" className="border border-foreground px-5 py-2.5 text-[11px] uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition-colors">Admin dashboard →</Link>

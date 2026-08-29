@@ -73,7 +73,6 @@ export const placeBid = createServerFn({ method: "POST" })
     z.object({ lotId: z.string().uuid(), amount: z.number().positive().max(1_000_000_000) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertApproved(context.userId);
     const { data: lot } = await supabaseAdmin.from("lots").select("id, session_id").eq("id", data.lotId).maybeSingle();
     if (!lot) throw new Error("Lot not found");
     const { data: session } = await supabaseAdmin.from("auction_sessions")

@@ -13,8 +13,8 @@ export const Route = createFileRoute("/auth/callback")({
 
     try {
       const { handleGoogleCallback } = await import("@/auth/functions");
-      await handleGoogleCallback({ data: { code: search.code, state: search.state } });
-      throw redirect({ to: "/auctions" });
+      const result = await handleGoogleCallback({ data: { code: search.code, state: search.state } });
+      throw redirect({ to: result.accountStatus === "pending" ? "/account" : "/auctions" });
     } catch (e: any) {
       // Re-throw redirects (from TanStack Router)
       if (e?.isRedirect) throw e;

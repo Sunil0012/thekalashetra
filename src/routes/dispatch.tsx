@@ -80,8 +80,8 @@ function DispatchPage() {
         <div className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">· Editorial Desk</div>
         <h1 className="font-serif text-5xl md:text-7xl tracking-tight mt-6">The <span className="italic font-light">Dispatch</span></h1>
         <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-          Writing from the art world — market mechanics, artist primers, provenance and conservation, and the
-          South Asian modern scene. Composed by our AI editorial desk and refreshed through the day.
+          Current art-world reporting — exhibitions, auctions, artist profiles, magazine features and journal research
+          from the last seven days. Composed by our AI editorial desk and refreshed daily.
         </p>
       </section>
 
@@ -126,6 +126,11 @@ function DispatchPage() {
           <div className="py-24 text-center border-y border-border">
             <p className="font-serif text-2xl italic">The desk is quiet right now.</p>
             <p className="mt-3 text-[13px] text-muted-foreground">{data.error}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-24 text-center border-y border-border">
+            <p className="font-serif text-2xl italic">No verified current-week stories yet.</p>
+            <p className="mt-3 text-[13px] text-muted-foreground">The desk publishes only when Gemini can verify a relevant recent source.</p>
           </div>
         ) : (
           <>
@@ -243,7 +248,7 @@ function DispatchPage() {
                   <ul className="mt-4 space-y-2">
                     {open.sources.map((s: any, i: number) => (
                       <li key={i} className="text-[13px] leading-relaxed">
-                        <span className="font-medium">{s.publication}</span>
+                        {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4">{s.publication}</a> : <span className="font-medium">{s.publication}</span>}
                         {s.note ? <span className="text-muted-foreground"> — {s.note}</span> : null}
                       </li>
                     ))}

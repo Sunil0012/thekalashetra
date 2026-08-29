@@ -190,10 +190,10 @@ function LotPage() {
               <div className="mt-7 border-t border-border pt-6">
                 <p className="text-[13px] text-muted-foreground">
                   {session?.mode === "short"
-                    ? "This lot bids in a timed live slot. Bidding opens exactly at the scheduled time — register now so you're cleared the moment it starts."
-                    : "Bidding for this session hasn't opened yet. Register in advance to be approved before it goes live."}
+                    ? "This lot bids in a timed live slot. Bidding opens exactly at the scheduled time — request live-bidding access now so you're cleared when it starts."
+                    : "Bidding for this session hasn't opened yet. Sign in and return when the auction goes live to place your bid."}
                 </p>
-                <RegisterPanel sessionId={session?.id} lotId={lot.id} />
+                {session?.mode === "short" && <RegisterPanel sessionId={session.id} lotId={lot.id} />}
               </div>
             )}
 
