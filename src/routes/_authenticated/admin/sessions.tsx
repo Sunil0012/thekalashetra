@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { adminListAllSessions, adminUpsertSession, adminDeleteSession, adminSetSessionStatus } from "@/lib/auction.functions";
 import { slugify, formatCountdown } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export const Route = createFileRoute("/_authenticated/admin/sessions")({
   head: () => ({ meta: [{ title: "Sessions — Admin" }] }),
@@ -124,7 +125,17 @@ function AdminSessions() {
             <Field name="title" label="Title" defaultValue={editing?.title} required />
             <Field name="slug" label="Slug (URL)" defaultValue={editing?.slug} placeholder="auto from title" />
             <Field name="description" label="Description" defaultValue={editing?.description} textarea />
-            <Field name="cover_image" label="Cover image URL" defaultValue={editing?.cover_image} />
+            <ImageUpload 
+              value={editing?.cover_image} 
+              onChange={(url) => {
+                // Update the form state with the new image URL
+                const hiddenInput = document.querySelector('input[name="cover_image"]') as HTMLInputElement;
+                if (hiddenInput) hiddenInput.value = url;
+              }}
+              folder="sessions"
+              label="Cover Image"
+            />
+            <input type="hidden" name="cover_image" defaultValue={editing?.cover_image ?? ""} />
             <div className="grid grid-cols-2 gap-4">
               <Field name="starts_at" label="Starts at" type="datetime-local" defaultValue={editing?.starts_at ? toLocalInput(editing.starts_at) : ""} required />
               <Field name="ends_at" label="Ends at" type="datetime-local" defaultValue={editing?.ends_at ? toLocalInput(editing.ends_at) : ""} required />

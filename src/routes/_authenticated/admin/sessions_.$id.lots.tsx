@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { adminListLots, adminUpsertLot, adminDeleteLot } from "@/lib/auction.functions";
 import { formatBid } from "@/lib/format";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export const Route = createFileRoute("/_authenticated/admin/sessions_/$id/lots")({
   head: () => ({ meta: [{ title: "Manage Lots — Admin" }] }),
@@ -118,7 +119,16 @@ function AdminLots() {
                 {["Painting", "Drawing", "Sculpture", "Photography", "Print"].map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
               </select>
             </div>
-            <F name="image_url" label="Image URL (e.g. /lots/lot-01.jpg or https://…)" defaultValue={editing?.image_url} />
+            <ImageUpload 
+              value={editing?.image_url} 
+              onChange={(url) => {
+                const hiddenInput = document.querySelector('input[name="image_url"]') as HTMLInputElement;
+                if (hiddenInput) hiddenInput.value = url;
+              }}
+              folder="lots"
+              label="Lot Image"
+            />
+            <input type="hidden" name="image_url" defaultValue={editing?.image_url ?? ""} />
             <F name="provenance" label="Provenance" defaultValue={editing?.provenance} textarea />
             <F name="description" label="Description" defaultValue={editing?.description} textarea />
             <div className="flex justify-end gap-2 pt-4">

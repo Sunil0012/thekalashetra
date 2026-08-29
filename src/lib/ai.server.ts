@@ -1,10 +1,53 @@
-// Use Google Gemini API
+// Use Google Gemini API with automatic model fallback
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL = "gemini-3.6-flash";
+
+// Model tiers - highest performing first, fallback to lighter models
+const MODEL_TIERS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+];
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export const FAST_MODEL = MODEL;
+export const FAST_MODEL = MODEL_TIERS[0];
+
+// Track rate limits per model
+const modelLimits: Map<string, { resetAt: number; count: number }> = new Map();
+
+function isModelAvailable(model: string): boolean {
+  const limit = modelLimits.get(model);
+  if (!limit) return true;
+  if (Date.now() > limit.resetAt) {
+    modelLimits.delete(model);
+    return true;
+  }
+  return limit.count < 10; // 10 requests per minute per model
+}
+
+function markModelLimited(model: string): void {
+  modelLimits.set(model, {
+    resetAt: Date.now() + 60000, // 1 minute cooldown
+    count: (modelLimits.get(model)?.count ?? 0) + 1,
+  });
+}
+
+function getAvailableModel(preferred?: string): string {
+  // Try preferred model first
+  if (preferred && isModelAvailable(preferred)) return preferred;
+  
+  // Try all models in tier order
+  for (const model of MODEL_TIERS) {
+    if (isModelAvailable(model)) return model;
+  }
+  
+  // Fallback to first model if all are rate-limited
+  return MODEL_TIERS[0];
+}
 
 export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
@@ -12,37 +55,94 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
     throw new Error("AI is not configured. Please add a GEMINI_API_KEY environment variable in your Vercel dashboard.");
   }
 
-  const model = opts?.model ?? MODEL;
-  const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
+  const preferredModel = opts?.model ?? MODEL_TIERS[0];
+  const model = getAvailableModel(preferredModel);
+  
+  let lastError: Error | null = null;
+  
+  // Try the model, fallback to others if rate-limited
+  const modelsToTry = [model, ...MODEL_TIERS.filter(m => m !== model)];
+  
+  for (const tryModel of modelsToTry) {
+    if (!isModelAvailable(tryModel)) continue;
+    
+    try {
+      const url = `${GEMINI_URL}/${tryModel}:generateContent?key=${key}`;
 
-  const systemMsg = messages.find((m) => m.role === "system");
-  const conversationMsgs = messages.filter((m) => m.role !== "system");
+      const systemMsg = messages.find((m) => m.role === "system");
+      const conversationMsgs = messages.filter((m) => m.role !== "system");
 
-  const contents = conversationMsgs.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+      const contents = conversationMsgs.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
 
-  const body: any = {
-    contents,
-    generationConfig: {
-      ...(opts?.maxTokens ? { maxOutputTokens: opts.maxTokens } : {}),
-    },
-  };
+      const body: any = {
+        contents,
+        generationConfig: {
+          ...(opts?.maxTokens ? { maxOutputTokens: opts.maxTokens } : {}),
+        },
+      };
 
-  if (systemMsg) {
-    body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+      if (systemMsg) {
+        body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 429) {
+        markModelLimited(tryModel);
+        lastError = new Error(`Rate limited on ${tryModel}`);
+        continue; // Try next model
+      }
+      
+      if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`);
+
+      const json: any = await res.json();
+      return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    } catch (e: any) {
+      lastError = e;
+      if (e.message?.includes('429') || e.message?.includes('rate')) {
+        markModelLimited(tryModel);
+        continue;
+      }
+      throw e; // Non-rate-limit errors should propagate
+    }
   }
+  
+  throw lastError ?? new Error("All AI models are currently unavailable.");
+}
 
+// Function to analyze images using Gemini's vision capabilities
+export async function analyzeImage(imageUrl: string, prompt: string): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("AI not configured");
+  
+  const model = getAvailableModel();
+  const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
+  
+  const body = {
+    contents: [{
+      role: "user",
+      parts: [
+        { text: prompt },
+        { fileData: { mimeType: "image/jpeg", fileUri: imageUrl } }
+      ]
+    }],
+    generationConfig: { maxOutputTokens: 1000 }
+  };
+  
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
-  if (res.status === 429) throw new Error("Too many requests right now — please try again in a moment.");
-  if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`);
-
+  
+  if (!res.ok) throw new Error(`Image analysis failed: ${res.status}`);
   const json: any = await res.json();
   return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
