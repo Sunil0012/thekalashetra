@@ -21,7 +21,11 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   useNow(30_000);
   const fn = useServerFn(getCatalogue);
-  const { data, isLoading } = useQuery({ queryKey: ["catalogue"], queryFn: () => fn() });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["catalogue"],
+    queryFn: () => fn(),
+    refetchInterval: 30_000,
+  });
 
   const lots = data?.lots ?? [];
   const sessions = data?.sessions ?? [];
@@ -32,6 +36,16 @@ function HomePage() {
   const selected = lots.slice(1, 7);
   const artistsCount = new Set(lots.map((l: any) => l.artist)).size;
   const soldCount = lots.filter((l: any) => l.status === "sold").length;
+  const catalogueCount = lots.length;
+
+  // getCatalogue returns database rows in snake_case. Keep the homepage resilient
+  // to older camelCase responses too, and use the bundled artwork if a remote image
+  // is missing or unavailable.
+  const lotImage = (lot: any) => lot.image_url ?? lot.imageUrl ?? `/lots/lot-${String(((lot.lot_number ?? lot.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+  const lotCurrentBid = (lot: any) => lot.current_bid ?? lot.currentBid ?? lot.starting_bid ?? 0;
+  const lotNumber = (lot: any) => lot.lot_number ?? lot.lotNumber ?? "—";
+  const lotBidCount = (lot: any) => lot.bid_count ?? lot.bidCount ?? 0;
+  const featuredSessionId = featured?.session_id ?? featured?.sessionId;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -73,9 +87,9 @@ function HomePage() {
             </div>
 
             <div className="mt-16 grid grid-cols-3 gap-8 border-t border-white/10 pt-8 max-w-md">
-              <Stat n={lots.length} label="Live Lots" />
-              <Stat n={artistsCount} label="Artists" />
-              <Stat n={soldCount} label="Sold" />
+              <Stat n={isLoading || isError ? "—" : catalogueCount} label="Catalogue Lots" />
+              <Stat n={isLoading || isError ? "—" : artistsCount} label="Artists" />
+              <Stat n={isLoading || isError ? "—" : soldCount} label="Sold" />
             </div>
           </div>
 
@@ -84,17 +98,22 @@ function HomePage() {
             <Link to="/lot/$id" params={{ id: featured.id }} className="group block">
               <div className="aspect-[4/5] overflow-hidden bg-white/5">
                 <img
-                  src={featured.imageUrl ?? ""}
+                  src={lotImage(featured)}
                   alt={`${featured.title} by ${featured.artist}`}
                   width={1024}
                   height={1280}
                   className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
+                  onError={(e) => {
+                    const image = e.currentTarget;
+                    const fallback = `/lots/lot-${String(((featured.lot_number ?? featured.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+                    if (image.src !== new URL(fallback, window.location.href).href) image.src = fallback;
+                  }}
                 />
               </div>
               <div className="mt-6 flex items-end justify-between gap-6">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.22em] opacity-60">
-                    Featured Lot · No. {featured.lotNumber}
+                    Featured Lot · No. {lotNumber(featured)}
                   </div>
                   <h2 className="mt-3 font-serif text-2xl md:text-3xl leading-tight">
                     {featured.artist} <span className="opacity-50">—</span>{" "}
@@ -103,33 +122,34 @@ function HomePage() {
                 </div>
                 <div className="text-right shrink-0">
                   <div className="font-mono text-[10px] uppercase tracking-[0.22em] opacity-60">Current</div>
-                  <div className="mt-1.5 font-serif text-2xl">{formatBid(featured.currentBid)}</div>
+                  <div className="mt-1.5 font-serif text-2xl">{formatBid(lotCurrentBid(featured))}</div>
                   <div className="mt-1 font-mono text-[11px] text-live">
-                    {formatCountdown(sessionsById[featured.sessionId]?.endsAt)}
+                    {formatCountdown(sessionsById[featuredSessionId]?.ends_at ?? sessionsById[featuredSessionId]?.endsAt)}
                   </div>
                 </div>
               </div>
             </Link>
           ) : (
-            <div className="aspect-[4/5] border border-white/10 flex flex-col items-center justify-center text-center p-10">
+            <div className="relative aspect-[4/5] overflow-hidden bg-white/5">
+              <img
+                src="/lots/lot-01.jpg"
+                alt="Artwork from the Kalashetra collection"
+                className="absolute inset-0 h-full w-full object-cover opacity-75"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#120904] via-[#120904]/30 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-8 md:p-10 text-background">
               {isLoading ? (
-                <div className="text-[11px] uppercase tracking-[0.22em] opacity-60">Loading catalogue…</div>
+                <div className="text-[11px] uppercase tracking-[0.22em] opacity-80">Loading catalogue…</div>
               ) : (
                 <>
-                  <div className="w-20 h-20 border border-white/10 flex items-center justify-center mb-6">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="opacity-40">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                  </div>
                   <p className="font-serif text-2xl italic opacity-80">New collection incoming</p>
-                  <p className="mt-3 text-[13px] opacity-50 max-w-xs">Our next curated auction session is being prepared. Check back soon or explore past sales.</p>
+                  <p className="mt-3 text-[13px] opacity-75 max-w-xs">Our next curated auction session is being prepared. Check back soon or explore the catalogue.</p>
                   <Link to="/auctions" className="mt-6 text-[11px] uppercase tracking-[0.18em] underline underline-offset-4 opacity-70 hover:opacity-100">
                     Browse catalogue →
                   </Link>
                 </>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -180,12 +200,17 @@ function HomePage() {
                 <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group block">
                   <div className="aspect-square overflow-hidden bg-muted">
                     <img
-                      src={l.imageUrl ?? ""}
+                      src={lotImage(l)}
                       alt={`${l.title} by ${l.artist}`}
                       loading="lazy"
                       width={1024}
                       height={1024}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      onError={(e) => {
+                        const image = e.currentTarget;
+                        const fallback = `/lots/lot-${String(((l.lot_number ?? l.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+                        if (image.src !== new URL(fallback, window.location.href).href) image.src = fallback;
+                      }}
                     />
                   </div>
                   <div className="mt-5 flex items-start justify-between gap-4">
@@ -194,8 +219,8 @@ function HomePage() {
                       <div className="font-serif italic text-[13px] text-muted-foreground">{l.title}{l.year ? `, ${l.year}` : ""}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-serif text-lg">{formatBid(l.currentBid)}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground">{l.bidCount} bids</div>
+                      <div className="font-serif text-lg">{formatBid(lotCurrentBid(l))}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">{lotBidCount(l)} bids</div>
                     </div>
                   </div>
                 </Link>
@@ -249,7 +274,7 @@ function HomePage() {
   );
 }
 
-function Stat({ n, label }: { n: number; label: string }) {
+function Stat({ n, label }: { n: number | string; label: string }) {
   return (
     <div>
       <div className="font-serif text-3xl">{n}</div>

@@ -4,9 +4,8 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 // Model tiers - highest performing first, fallback to lighter models
 // Only using currently available Gemini 3.x models
 const MODEL_TIERS = [
-  "gemini-3.7-flash",
+  "gemini-3.8-flash",
   "gemini-3.6-flash",
-  "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
 ];
@@ -59,13 +58,14 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
   
   let lastError: Error | null = null;
   
-  // Try the model, fallback to others if rate-limited
+  // Try the preferred model first, then fall back when Google reports a
+  // temporary overload or rate limit.
   const modelsToTry = [model, ...MODEL_TIERS.filter(m => m !== model)];
   
   for (const tryModel of modelsToTry) {
     if (!isModelAvailable(tryModel)) continue;
     
-    try {
+    for (let attempt = 0; attempt < 2; attempt++) try {
       const url = `${GEMINI_URL}/${tryModel}:generateContent?key=${key}`;
 
       const systemMsg = messages.find((m) => m.role === "system");
@@ -104,10 +104,15 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
         body: JSON.stringify(body),
       });
 
-      if (res.status === 429) {
+      const isTransient = res.status === 429 || res.status === 408 || (res.status >= 500 && res.status < 600);
+      if (isTransient) {
         markModelLimited(tryModel);
-        lastError = new Error(`Rate limited on ${tryModel}`);
-        continue; // Try next model
+        lastError = new Error(`Gemini temporarily unavailable (${res.status}) on ${tryModel}`);
+        if (attempt === 0 && res.status !== 429) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+        break; // Try the next model
       }
       
       if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`);
@@ -116,10 +121,6 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
       return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     } catch (e: any) {
       lastError = e;
-      if (e.message?.includes('429') || e.message?.includes('rate')) {
-        markModelLimited(tryModel);
-        continue;
-      }
       throw e; // Non-rate-limit errors should propagate
     }
   }
