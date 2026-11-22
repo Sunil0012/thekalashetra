@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { getCatalogue } from "@/lib/auction.functions";
-import { formatBid, formatCountdown } from "@/lib/format";
+import { formatBid, formatCountdown, optimizeImageUrl } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 
 export const Route = createFileRoute("/")({
@@ -41,7 +41,9 @@ function HomePage() {
   // getCatalogue returns database rows in snake_case. Keep the homepage resilient
   // to older camelCase responses too, and use the bundled artwork if a remote image
   // is missing or unavailable.
-  const lotImage = (lot: any) => lot.image_url ?? lot.imageUrl ?? `/lots/lot-${String(((lot.lot_number ?? lot.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+  const lotFallbackImage = (lot: any) => `/lots/lot-${String(((lot.lot_number ?? lot.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+  const lotImage = (lot: any, width: number, height = width) =>
+    optimizeImageUrl(lot.image_url ?? lot.imageUrl, width, height) || lotFallbackImage(lot);
   const lotCurrentBid = (lot: any) => lot.current_bid ?? lot.currentBid ?? lot.starting_bid ?? 0;
   const lotNumber = (lot: any) => lot.lot_number ?? lot.lotNumber ?? "—";
   const lotBidCount = (lot: any) => lot.bid_count ?? lot.bidCount ?? 0;
@@ -98,14 +100,17 @@ function HomePage() {
             <Link to="/lot/$id" params={{ id: featured.id }} className="group block">
               <div className="aspect-[4/5] overflow-hidden bg-white/5">
                 <img
-                  src={lotImage(featured)}
+                  src={lotImage(featured, 760, 950)}
                   alt={`${featured.title} by ${featured.artist}`}
                   width={1024}
                   height={1280}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
                   onError={(e) => {
                     const image = e.currentTarget;
-                    const fallback = `/lots/lot-${String(((featured.lot_number ?? featured.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+                    const fallback = lotFallbackImage(featured);
                     if (image.src !== new URL(fallback, window.location.href).href) image.src = fallback;
                   }}
                 />
@@ -200,15 +205,16 @@ function HomePage() {
                 <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group block">
                   <div className="aspect-square overflow-hidden bg-muted">
                     <img
-                      src={lotImage(l)}
+                      src={lotImage(l, 480)}
                       alt={`${l.title} by ${l.artist}`}
                       loading="lazy"
+                      decoding="async"
                       width={1024}
                       height={1024}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                       onError={(e) => {
                         const image = e.currentTarget;
-                        const fallback = `/lots/lot-${String(((l.lot_number ?? l.lotNumber ?? 1) - 1) % 9 + 1).padStart(2, "0")}.jpg`;
+                        const fallback = lotFallbackImage(l);
                         if (image.src !== new URL(fallback, window.location.href).href) image.src = fallback;
                       }}
                     />

@@ -3,6 +3,22 @@ export function formatBid(n: number | string | null | undefined): string {
   return "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
 
+export function optimizeImageUrl(url: string | null | undefined, width: number, height = width): string {
+  if (!url) return "";
+  try {
+    const imageUrl = new URL(url);
+    if (imageUrl.hostname !== "images.unsplash.com") return url;
+    imageUrl.searchParams.set("auto", "format");
+    imageUrl.searchParams.set("fit", "crop");
+    imageUrl.searchParams.set("w", String(width));
+    imageUrl.searchParams.set("h", String(height));
+    imageUrl.searchParams.set("q", "70");
+    return imageUrl.toString();
+  } catch {
+    return url;
+  }
+}
+
 export function nextMinIncrement(current: number) {
   if (current < 10000) return 500;
   if (current < 50000) return 1000;

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
+import { optimizeImageUrl } from "@/lib/format";
 import { LOTS, getLotLive, formatBid } from "@/lib/auction-data";
 
 export const Route = createFileRoute("/artists")({
@@ -46,7 +47,7 @@ function ArtistsPage() {
                         className="flex items-center gap-4 group"
                       >
                         <div className="w-14 h-14 bg-muted overflow-hidden flex-none">
-                          <img src={l.image} alt={l.title} loading="lazy" width={1024} height={1024} className="w-full h-full object-cover" />
+                          <img src={optimizeImageUrl(l.image, 480)} alt={l.title} loading="lazy" decoding="async" width={1024} height={1024} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-serif italic text-[14px] truncate group-hover:text-foreground">{l.title}, {l.year}</div>

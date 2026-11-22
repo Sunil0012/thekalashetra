@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { getCatalogue } from "@/lib/auction.functions";
-import { formatBid, formatCountdown } from "@/lib/format";
+import { formatBid, formatCountdown, optimizeImageUrl } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 
 type Search = { q?: string; cat?: string; sort?: string };
@@ -147,9 +147,10 @@ function AuctionsPage() {
                 <Link key={l.id} to="/lot/$id" params={{ id: l.id }} className="group block">
                   <div className="aspect-square overflow-hidden bg-muted relative">
                     <img
-                      src={l.image_url ?? ""}
+                      src={optimizeImageUrl(l.image_url, 480)}
                       alt={`${l.title} by ${l.artist}`}
                       loading="lazy"
+                      decoding="async"
                       width={1024}
                       height={1024}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"

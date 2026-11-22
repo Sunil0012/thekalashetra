@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { getLot, placeBid, registerForSession, getMyRegistration } from "@/lib/auction.functions";
-import { formatBid, formatCountdown, nextMinIncrement } from "@/lib/format";
+import { getLot, placeBid } from "@/lib/auction.functions";
+import { formatBid, formatCountdown, nextMinIncrement, optimizeImageUrl } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
 import { useNow } from "@/hooks/use-now";
 
@@ -104,10 +104,13 @@ function LotPage() {
       <article className="mx-auto max-w-[1400px] px-6 md:px-10 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
         <div className="bg-muted aspect-square overflow-hidden">
           <img
-            src={lot.image_url ?? ""}
+            src={optimizeImageUrl(lot.image_url, 900)}
             alt={`${lot.title} by ${lot.artist}`}
             width={1024}
             height={1024}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         </div>
@@ -190,10 +193,9 @@ function LotPage() {
               <div className="mt-7 border-t border-border pt-6">
                 <p className="text-[13px] text-muted-foreground">
                   {session?.mode === "short"
-                    ? "This lot bids in a timed live slot. Bidding opens exactly at the scheduled time — request live-bidding access now so you're cleared when it starts."
+                    ? "This lot is part of a timed bidding slot. Bidding opens when the scheduled window starts."
                     : "Bidding for this session hasn't opened yet. Sign in and return when the auction goes live to place your bid."}
                 </p>
-                {session?.mode === "short" && <RegisterPanel sessionId={session.id} lotId={lot.id} />}
               </div>
             )}
 
@@ -247,36 +249,3 @@ function LotPage() {
   );
 }
 
-function RegisterPanel({ sessionId, lotId }: { sessionId?: string; lotId: string }) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const regFn = useServerFn(registerForSession);
-  const myRegFn = useServerFn(getMyRegistration);
-  const { data: reg } = useQuery({
-    queryKey: ["registration", sessionId, user?.id],
-    queryFn: () => myRegFn({ data: { sessionId: sessionId! } }),
-    enabled: !!user && !!sessionId,
-  });
-  const register = useMutation({
-    mutationFn: () => regFn({ data: { sessionId: sessionId! } }),
-    onSuccess: () => { toast.success("Registration requested — awaiting admin approval."); qc.invalidateQueries({ queryKey: ["registration", sessionId] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  if (!sessionId) return null;
-  if (!user) {
-    return (
-      <Link to="/auth" search={{ redirect: `/lot/${lotId}` } as never} className="mt-4 inline-block border border-foreground px-6 py-3 text-[11px] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background transition-colors">
-        Sign in to register
-      </Link>
-    );
-  }
-  if (reg?.status === "approved") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">✓ Approved to bid in this session</p>;
-  if (reg?.status === "pending") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Registration pending approval</p>;
-  if (reg?.status === "rejected") return <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.22em] text-red-500">Registration declined</p>;
-  return (
-    <button onClick={() => register.mutate()} disabled={register.isPending} className="mt-4 border border-foreground px-6 py-3 text-[11px] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background transition-colors disabled:opacity-50">
-      {register.isPending ? "Requesting…" : "Register to bid"}
-    </button>
-  );
-}
