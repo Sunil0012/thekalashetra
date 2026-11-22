@@ -221,7 +221,7 @@ const STOCK_IMAGES: string[] = [
 // ─── 12 daily briefs — 3 per session across 4 sessions ───────────────────────
 const BRIEFS = [
   // Session 1: Market & Galleries
-  { kicker: "Market", brief: "an analysis of the global contemporary art market — auction turnover, top-selling categories, buyer demographics, and price movements over the last five years", session: 1 },
+  { kicker: "Market", brief: "an explainer on how the art market works: primary and secondary sales, auction estimates, reserves, condition, provenance, and collector decisions", session: 1 },
   { kicker: "Gallery", brief: "a deep dive into the gallery ecosystem — how galleries discover artists, the economics of representation, art-fair economics, and how a gallery builds an exhibition programme", session: 1 },
   { kicker: "Watercolour", brief: "a feature on watercolour painting — its history, techniques from the Renaissance to Turner and the Bengal School, material science of pigments and paper, and why it commands high prices at auction", session: 1 },
 
@@ -242,7 +242,7 @@ const BRIEFS = [
 ];
 
 const SYSTEM =
-  "You are the current-affairs editor of an Indian fine-art auction house. Use Google Search grounding for every piece. Write only about verifiable art-world news, exhibition announcements, magazine features, journal research, auction results, or artist profiles published within the last 7 days. Never use old background material as the main story, invent facts, quotes, figures, article titles, dates, or URLs. If there is no genuinely relevant item in the last 7 days, return {\"skip\":true}. Prefer primary institutions and reputable outlets such as The Art Newspaper, ArtReview, Frieze, Artforum, Ocula, STIR World, The Hindu, Mint Lounge, Scroll.in, museum websites, journals, Christie's and Sotheby's. Return STRICT JSON only, no markdown fences.";
+  "You are the editorial writer for an Indian fine-art auction house. Write engaging evergreen art features from general knowledge: artist primers, materials and techniques, collecting guides, provenance, conservation, and art history. Do not search the web. Do not write breaking news or imply that a story is recent. Avoid unverifiable statistics, current prices, predictions, fabricated quotes, and invented citations. Return strict JSON only, with no markdown fences.";
 
 function parseJson(text: string): any {
   const raw = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "");
@@ -539,99 +539,84 @@ const FALLBACK_DISPATCHES: Dispatch[] = [
   },
 ];
 
-// ─── Write a single dispatch piece via Gemini ────────────────────────────────
-async function writePiece(idx: number, dateISO: string): Promise<Dispatch | null> {
-  const b = BRIEFS[idx]!;
-  try {
-    const text = await Promise.race([
-      chat(
-        [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: `Write today's (${dateISO}) piece about this angle: ${b.brief}. Search first and use only sources published from ${(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10)} through ${dateISO}. Return JSON exactly: {"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4","p5"],"readMinutes":number,"sources":[{"publication":"real outlet or institution","note":"what it contributes, under 90 chars","url":"source URL if available"}]} or {"skip":true}. Rules: every factual claim must come from the searched sources; 5 body paragraphs of 60-85 words each; 3-4 sources; include publication dates in the body where useful; no evergreen filler; plain text, no markdown.`,
-          },
-        ],
-        { model: FAST_MODEL, maxTokens: 1600, searchCurrentWeek: true },
-      ),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
-    ]);
+// Evergreen fallback features keep the editorial page populated when AI is unavailable.
+function fallbackEdition(): Dispatch[] {
+  const evergreenSlugs = new Set([
+    "gallery-system-explained",
+    "watercolour-painting-history",
+    "modern-sculpture-primer",
+    "painting-techniques-explained",
+    "conservation-painting-science",
+    "prints-multiples-market",
+    "art-collecting-beginners",
+    "provenance-research",
+    "bengal-school-art-movement",
+  ]);
 
-    const i = parseJson(text);
-    if (!i?.title || i?.skip) return null;
-
-    const imageIndex = idx % STOCK_IMAGES.length;
-
-    return {
-      slug: slugify(String(i.title)),
-      kicker: String(i.kicker ?? b.kicker),
-      title: String(i.title),
-      standfirst: String(i.standfirst ?? ""),
-      body: (Array.isArray(i.body) ? i.body : []).map((p: any) => String(p)),
-      readMinutes: Number(i.readMinutes) || 5,
-      imageIndex,
-      imageUrl: getStockImage(imageIndex),
-      dateline: dateISO,
-      sessionId: b.session,
-      sources: (Array.isArray(i.sources) ? i.sources : [])
-        .slice(0, 4)
-        .map((s: any) => ({ publication: String(s?.publication ?? "").slice(0, 80), note: String(s?.note ?? "").slice(0, 140), url: typeof s?.url === "string" ? s.url.slice(0, 1000) : undefined }))
-        .filter((s: Source) => s.publication),
-    };
-  } catch {
-    return null;
-  }
-}
-
-// Run tasks in batches of 3
-async function runBatched<T>(tasks: (() => Promise<T>)[], batchSize: number): Promise<T[]> {
-  const results: T[] = [];
-  for (let i = 0; i < tasks.length; i += batchSize) {
-    const batch = tasks.slice(i, i + batchSize);
-    const batchResults = await Promise.all(batch.map((fn) => fn()));
-    results.push(...batchResults);
-  }
-  return results;
+  return FALLBACK_DISPATCHES
+    .filter((item) => evergreenSlugs.has(item.slug))
+    .map((item) => ({ ...item, dateline: "", sources: [] }));
 }
 
 async function buildEdition(): Promise<Dispatch[]> {
-  const day = today();
-  const taskFns = BRIEFS.slice(0, 6).map((_, idx) => () => writePiece(idx, day));
-  const results = await runBatched(taskFns, 3);
-  const items = results.filter(Boolean) as Dispatch[];
-  if (items.length) cache = { day, at: Date.now(), items };
-  return items;
+  const angles = BRIEFS.map((brief) => `${brief.kicker}: ${brief.brief}`).join("; ");
+  const text = await chat(
+    [
+      { role: "system", content: SYSTEM },
+      {
+        role: "user",
+        content: `Create 6 distinct evergreen art features based on these angles: ${angles}. Return JSON exactly as {"articles":[{"kicker":"2-3 word label","title":"headline under 70 chars","standfirst":"one sentence under 160 chars","body":["p1","p2","p3","p4"],"readMinutes":number}]}. Each feature should have 4 useful paragraphs of about 45-70 words. Write practical, readable art knowledge. Do not include dates, citations, sources, prices, statistics, or claims about current events.`,
+      },
+    ],
+    { model: FAST_MODEL, maxTokens: 3200 },
+  );
+
+  const parsed = parseJson(text);
+  const articles = Array.isArray(parsed) ? parsed : parsed?.articles;
+  if (!Array.isArray(articles)) return [];
+
+  return articles
+    .slice(0, 6)
+    .filter((article: any) => typeof article?.title === "string" && Array.isArray(article?.body))
+    .map((article: any, idx: number) => {
+      const brief = BRIEFS[idx] ?? BRIEFS[0]!;
+      const imageIndex = idx % STOCK_IMAGES.length;
+      return {
+        slug: slugify(article.title),
+        kicker: String(article.kicker ?? brief.kicker),
+        title: String(article.title),
+        standfirst: String(article.standfirst ?? ""),
+        body: article.body.map((paragraph: unknown) => String(paragraph)),
+        readMinutes: Number(article.readMinutes) || 5,
+        imageIndex,
+        imageUrl: getStockImage(imageIndex),
+        dateline: "",
+        sessionId: brief.session,
+        sources: [],
+      };
+    });
 }
 
-// ─── Main entry point: returns cached/fallback content immediately, generates in background if needed
+// Always keep stories available, even when the free AI tier is busy or unavailable.
 export async function getDispatches(force = false): Promise<Dispatch[]> {
   const day = today();
+  if (!force && cache?.day === day) return cache.items;
+  if (!force && inflight) return inflight;
 
-  // 1. If we have cached content for today, return it immediately
-  if (!force && cache && cache.day === day) {
-    return cache.items;
-  }
-
-  // 2. If there's already a build in progress, wait for it
-  if (!force && inflight) {
-    return inflight;
-  }
-
-  // 3. Start a background build — but DON'T block the caller
-  //    Return fallback content now, let the build populate cache for next visit
-  if (!force && !cache) {
-    inflight = buildEdition().finally(() => {
+  inflight = buildEdition()
+    .then((items) => {
+      const edition = items.length >= 3 ? items : fallbackEdition();
+      cache = { day, at: Date.now(), items: edition };
+      return edition;
+    })
+    .catch(() => {
+      const edition = fallbackEdition();
+      cache = { day, at: Date.now(), items: edition };
+      return edition;
+    })
+    .finally(() => {
       inflight = null;
     });
-    return inflight;
-  }
 
-  // 4. Force refresh
-  if (force) return buildEdition();
-
-  // 5. Old cache from a previous day — return it while rebuilding
-  inflight = buildEdition().finally(() => {
-    inflight = null;
-  });
   return inflight;
 }

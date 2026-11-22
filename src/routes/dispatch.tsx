@@ -80,8 +80,8 @@ function DispatchPage() {
         <div className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">· Editorial Desk</div>
         <h1 className="font-serif text-5xl md:text-7xl tracking-tight mt-6">The <span className="italic font-light">Dispatch</span></h1>
         <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-          Current art-world reporting — exhibitions, auctions, artist profiles, magazine features and journal research
-          from the last seven days. Composed by our AI editorial desk and refreshed daily.
+          Evergreen art features, artist primers, collecting guides, and notes on technique and conservation.
+          New editions are composed daily by our AI editorial desk.
         </p>
       </section>
 
@@ -129,8 +129,8 @@ function DispatchPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="py-24 text-center border-y border-border">
-            <p className="font-serif text-2xl italic">No verified current-week stories yet.</p>
-            <p className="mt-3 text-[13px] text-muted-foreground">The desk publishes only when Gemini can verify a relevant recent source.</p>
+            <p className="font-serif text-2xl italic">The desk is preparing a fresh edition.</p>
+            <p className="mt-3 text-[13px] text-muted-foreground">Please check back shortly for evergreen art features.</p>
           </div>
         ) : (
           <>
