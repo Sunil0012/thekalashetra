@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/db/supabase-client";
-import { sendAccountApprovalEmail } from "@/lib/email.server";
 
 export type AppUser = {
   id: string;
@@ -24,10 +23,17 @@ export async function findOrCreateUser(googleUser: {
     .maybeSingle();
 
   if (existing) {
-    await supabaseAdmin
+    const accountStatus = existing.account_status === "pending" ? "approved" : existing.account_status;
+    const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .update({ full_name: googleUser.name, avatar_url: googleUser.picture })
+      .update({
+        full_name: googleUser.name,
+        avatar_url: googleUser.picture,
+        ...(accountStatus !== existing.account_status ? { account_status: accountStatus } : {}),
+      })
       .eq("id", googleUser.id);
+    if (profileError) throw new Error(`Could not update your profile: ${profileError.message}`);
+    existing.account_status = accountStatus;
 
     // If no owner exists yet, make this user the owner
     const { data: owners } = await supabaseAdmin
@@ -56,7 +62,7 @@ export async function findOrCreateUser(googleUser: {
     email: googleUser.email,
     full_name: googleUser.name,
     avatar_url: googleUser.picture,
-    account_status: "pending",
+    account_status: "approved",
   });
 
   // Make the first user the owner automatically
@@ -70,26 +76,12 @@ export async function findOrCreateUser(googleUser: {
     await supabaseAdmin.from("profiles").update({ account_status: "approved" }).eq("id", googleUser.id);
   }
 
-  if (count !== 1) {
-    await supabaseAdmin.from("admin_notifications").insert({
-      kind: "account_approval",
-      title: `New account awaiting approval: ${googleUser.name || googleUser.email}`,
-      body: `${googleUser.email} created a Kalashetra account and is waiting for membership approval.`,
-      link: "/admin/users",
-    });
-    try {
-      await sendAccountApprovalEmail({ id: googleUser.id, email: googleUser.email, fullName: googleUser.name });
-    } catch (error) {
-      console.warn("[Account approval email] failed:", (error as Error).message);
-    }
-  }
-
   return {
     id: googleUser.id,
     email: googleUser.email,
     fullName: googleUser.name,
     avatarUrl: googleUser.picture,
-    accountStatus: count === 1 ? "approved" : "pending",
+    accountStatus: "approved",
   };
 }
 
