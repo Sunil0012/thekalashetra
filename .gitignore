@@ -36,3 +36,5 @@ kalashetra.db-shm
 *.sln
 *.sw?
 .env
+
+.vercel
