@@ -1,22 +1,12 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo } from "react";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { listDispatches } from "@/lib/ai.functions";
-import img1 from "@/assets/dispatch-1.jpg";
-import img2 from "@/assets/dispatch-2.jpg";
-import img3 from "@/assets/dispatch-3.jpg";
-import img4 from "@/assets/dispatch-4.jpg";
-
-const LOCAL_IMAGES = [img1, img2, img3, img4];
+import { localArtworkImage, useLocalImageFallback } from "@/lib/format";
 
 export const Route = createFileRoute("/dispatch")({
-  beforeLoad: async () => {
-    const { getCurrentSession } = await import("@/auth/functions");
-    const session = await getCurrentSession();
-    if (!session) throw redirect({ to: "/auth", search: { redirect: "/dispatch" } });
-  },
   head: () => ({
     meta: [
       { title: "The Dispatch — Art World Writing | Kalashetra" },
@@ -140,18 +130,21 @@ function DispatchPage() {
                 <div className="aspect-[4/3] overflow-hidden bg-muted relative">
                   {lead.imageUrl ? (
                     <img
-                      src={lead.imageUrl}
+                      src={lead.imageUrl || localArtworkImage(lead.imageIndex)}
                       alt={lead.title}
                       width={1200}
                       height={800}
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = LOCAL_IMAGES[lead.imageIndex % LOCAL_IMAGES.length];
+                        useLocalImageFallback(e, localArtworkImage(lead.imageIndex));
                       }}
                     />
                   ) : (
                     <img
-                      src={LOCAL_IMAGES[lead.imageIndex % LOCAL_IMAGES.length]}
+                      src={localArtworkImage(lead.imageIndex)}
                       alt={lead.title}
                       width={1024}
                       height={768}
@@ -175,19 +168,20 @@ function DispatchPage() {
                   <div className="aspect-[4/3] overflow-hidden bg-muted">
                     {a.imageUrl ? (
                       <img
-                        src={a.imageUrl}
+                        src={a.imageUrl || localArtworkImage(a.imageIndex)}
                         alt={a.title}
                         loading="lazy"
+                        decoding="async"
                         width={1200}
                         height={800}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = LOCAL_IMAGES[a.imageIndex % LOCAL_IMAGES.length];
+                          useLocalImageFallback(e, localArtworkImage(a.imageIndex));
                         }}
                       />
                     ) : (
                       <img
-                        src={LOCAL_IMAGES[a.imageIndex % LOCAL_IMAGES.length]}
+                        src={localArtworkImage(a.imageIndex)}
                         alt={a.title}
                         loading="lazy"
                         width={1024}
@@ -213,18 +207,18 @@ function DispatchPage() {
             <div className="aspect-[16/7] overflow-hidden bg-muted">
               {open.imageUrl ? (
                 <img
-                  src={open.imageUrl}
+                  src={open.imageUrl || localArtworkImage(open.imageIndex)}
                   alt={open.title}
                   width={1200}
                   height={800}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = LOCAL_IMAGES[open.imageIndex % LOCAL_IMAGES.length];
+                    useLocalImageFallback(e, localArtworkImage(open.imageIndex));
                   }}
                 />
               ) : (
                 <img
-                  src={LOCAL_IMAGES[open.imageIndex % LOCAL_IMAGES.length]}
+                  src={localArtworkImage(open.imageIndex)}
                   alt={open.title}
                   width={1024}
                   height={768}

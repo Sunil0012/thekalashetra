@@ -19,6 +19,22 @@ export function optimizeImageUrl(url: string | null | undefined, width: number, 
   }
 }
 
+export function localArtworkImage(index: number | string | null | undefined = 1): string {
+  const lotNumber = Math.max(1, Number(index) || 1);
+  const imageNumber = ((lotNumber - 1) % 9) + 1;
+  return `/lots/lot-${String(imageNumber).padStart(2, "0")}.jpg`;
+}
+
+export function useLocalImageFallback(
+  event: { currentTarget: HTMLImageElement },
+  fallback: string,
+): void {
+  const image = event.currentTarget;
+  if (image.dataset.fallbackApplied === "true") return;
+  image.dataset.fallbackApplied = "true";
+  image.src = fallback;
+}
+
 export function nextMinIncrement(current: number) {
   if (current < 10000) return 500;
   if (current < 50000) return 1000;

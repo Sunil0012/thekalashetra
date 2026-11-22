@@ -4,10 +4,10 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 // Model tiers - highest performing first, fallback to lighter models
 // Only using currently available Gemini 3.x models
 const MODEL_TIERS = [
-  "gemini-3.8-flash",
-  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
 ];
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -47,7 +47,13 @@ function getAvailableModel(preferred?: string): string {
   return MODEL_TIERS[0];
 }
 
-export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number; searchCurrentWeek?: boolean }): Promise<string> {
+export async function chat(messages: ChatMessage[], opts?: {
+  model?: string;
+  maxTokens?: number;
+  searchCurrentWeek?: boolean;
+  timeoutMs?: number;
+  maxModels?: number;
+}): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     throw new Error("AI is not configured. Please add a GEMINI_API_KEY environment variable in your Vercel dashboard.");
@@ -57,15 +63,18 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
   const model = getAvailableModel(preferredModel);
   
   let lastError: Error | null = null;
+  const deadline = Date.now() + (opts?.timeoutMs ?? 12000);
   
   // Try the preferred model first, then fall back when Google reports a
   // temporary overload or rate limit.
-  const modelsToTry = [model, ...MODEL_TIERS.filter(m => m !== model)];
+  const modelsToTry = [model, ...MODEL_TIERS.filter(m => m !== model)].slice(0, opts?.maxModels ?? MODEL_TIERS.length);
   
   for (const tryModel of modelsToTry) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) break;
     if (!isModelAvailable(tryModel)) continue;
     
-    for (let attempt = 0; attempt < 2; attempt++) try {
+    try {
       const url = `${GEMINI_URL}/${tryModel}:generateContent?key=${key}`;
 
       const systemMsg = messages.find((m) => m.role === "system");
@@ -102,17 +111,14 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(Math.min(5000, remainingMs)),
       });
 
       const isTransient = res.status === 429 || res.status === 408 || (res.status >= 500 && res.status < 600);
       if (isTransient) {
         markModelLimited(tryModel);
         lastError = new Error(`Gemini temporarily unavailable (${res.status}) on ${tryModel}`);
-        if (attempt === 0 && res.status !== 429) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          continue;
-        }
-        break; // Try the next model
+        continue; // Move on instead of retrying a model that is already busy.
       }
       
       if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`);
@@ -121,7 +127,11 @@ export async function chat(messages: ChatMessage[], opts?: { model?: string; max
       return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     } catch (e: any) {
       lastError = e;
-      throw e; // Non-rate-limit errors should propagate
+      if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+        markModelLimited(tryModel);
+        continue;
+      }
+      throw e;
     }
   }
   
@@ -191,31 +201,15 @@ export function getCachedDispatches(): Dispatch[] {
 
 // ─── 20 stock art / painting images (Unsplash — verified IDs) ────────────────
 const STOCK_IMAGES: string[] = [
-  // Session 1 — painting, gallery, watercolor, sculpture
-  "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=1200&h=800&fit=crop",
-  // Session 2 — abstract, museum, sketch, palette
-  "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1513366433178-e40264e1b258?w=1200&h=800&fit=crop",
-  // Session 3 — portrait, printmaking, ceramics, mural
-  "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1499781350541-7783f6c6a0c8?w=1200&h=800&fit=crop",
-  // Session 4 — oil tubes, easel, collage, installation
-  "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1572947650440-e8a97ef053b2?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1545996124-2dd80f169719?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1531913764164-f85c3b474500?w=1200&h=800&fit=crop",
-  // Session 5 — modern art, landscape, figurative, textile
-  "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1582561833407-b95380519868?w=1200&h=800&fit=crop",
-  "https://images.unsplash.com/photo-1544967082-d9d25d867d66?w=1200&h=800&fit=crop",
+  "/lots/lot-01.jpg",
+  "/lots/lot-02.jpg",
+  "/lots/lot-03.jpg",
+  "/lots/lot-04.jpg",
+  "/lots/lot-05.jpg",
+  "/lots/lot-06.jpg",
+  "/lots/lot-07.jpg",
+  "/lots/lot-08.jpg",
+  "/lots/lot-09.jpg",
 ];
 
 // ─── 12 daily briefs — 3 per session across 4 sessions ───────────────────────
@@ -601,22 +595,17 @@ async function buildEdition(): Promise<Dispatch[]> {
 export async function getDispatches(force = false): Promise<Dispatch[]> {
   const day = today();
   if (!force && cache?.day === day) return cache.items;
-  if (!force && inflight) return inflight;
 
-  inflight = buildEdition()
-    .then((items) => {
-      const edition = items.length >= 3 ? items : fallbackEdition();
-      cache = { day, at: Date.now(), items: edition };
-      return edition;
-    })
-    .catch(() => {
-      const edition = fallbackEdition();
-      cache = { day, at: Date.now(), items: edition };
-      return edition;
-    })
-    .finally(() => {
-      inflight = null;
-    });
-
-  return inflight;
+  // Return a complete edition immediately; AI refreshes must never hold the page open.
+  const instantEdition = fallbackEdition();
+  cache = { day, at: Date.now(), items: instantEdition };
+  if (!inflight) {
+    inflight = buildEdition()
+      .then((items) => {
+        if (items.length >= 3) cache = { day, at: Date.now(), items };
+      })
+      .catch((error) => console.warn("[Dispatch] Using evergreen edition:", (error as Error).message))
+      .finally(() => { inflight = null; });
+  }
+  return instantEdition;
 }

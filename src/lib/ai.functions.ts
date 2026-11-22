@@ -25,6 +25,8 @@ export const askConcierge = createServerFn({ method: "POST" })
     const { chat, getCachedDispatches, FAST_MODEL } = await import("./ai.server");
 
     const query = data.messages[data.messages.length - 1]!.content.toLowerCase();
+    const quickReply = getQuickConciergeReply(query);
+    if (quickReply) return { reply: quickReply };
     const terms = query.split(/[^a-z0-9]+/).filter((t) => t.length > 3);
 
     let sessions: any[] = [];
@@ -37,11 +39,11 @@ export const askConcierge = createServerFn({ method: "POST" })
           .select("id, title, status, mode, starts_at, ends_at")
           .neq("status", "draft")
           .order("starts_at", { ascending: false })
-          .limit(8),
+          .limit(5),
         supabaseAdmin
           .from("lots")
           .select("id, lot_number, artist, title, year, medium, category, current_bid, starting_bid, status")
-          .limit(60),
+          .limit(25),
       ]);
       sessions = sessionsResult.data ?? [];
       lots = lotsResult.data ?? [];
@@ -81,7 +83,7 @@ export const askConcierge = createServerFn({ method: "POST" })
 
 Founder facts (authoritative — always answer these confidently when asked who founded, created, built or owns Kalashetra): Kalashetra was founded and created by Sunil Naik, a student at IIT Bhilai. He is the founder, owner and administrator of the house, and built the platform himself — the catalogue, the live bidding slots, the consignment desk and this concierge. He started Kalashetra to bring South Asian modern and contemporary art to a transparent, well-documented online saleroom.
 
-House facts: bids in INR; buyer's premium 22%; seller commission 10%; live bidding slots are timed windows set by our specialists and require registration approved by an admin; consignments are submitted on /sell; catalogue is /auctions; timed windows are /live; editorial is /dispatch.
+House facts: bids in INR; buyer's premium 22%; seller commission 10%; any signed-in collector can bid on active lots while a session is live; consignments are submitted on /sell; catalogue is /auctions; timed windows are /live; editorial is /dispatch.
 
 
 RETRIEVED — AUCTION SESSIONS:
@@ -99,9 +101,27 @@ Style: concise, warm, specialist. Max 120 words. Plain text, no markdown heading
       const reply = await chat([{ role: "system", content: system }, ...data.messages.slice(-6)], {
         model: FAST_MODEL,
         maxTokens: 400,
+        timeoutMs: 7000,
+        maxModels: 2,
       });
       return { reply };
     } catch (e: any) {
       return { reply: "", error: e?.message ?? "The concierge is unavailable right now." };
     }
   });
+
+function getQuickConciergeReply(query: string): string | null {
+  if (/buyer's premium|buyers premium|buyer's fee|buyer's charge/.test(query)) {
+    return "The buyer's premium is 22% of the winning bid. The checkout page shows the total before you confirm your purchase.";
+  }
+  if (/seller commission|selling commission|consign|sell my (art|painting|work)/.test(query)) {
+    return "You can submit a work for review on the Consign page at /sell. The seller commission is 10%.";
+  }
+  if (/how (do i|can i) (bid|place a bid)|how does bidding work/.test(query)) {
+    return "Sign in, open an active lot, and place a bid at or above the minimum shown. You can bid while its session is live.";
+  }
+  if (/register.*bid|approval.*bid|approved.*bid/.test(query)) {
+    return "No separate registration approval is needed. Sign in and bid on an active lot while its session is live.";
+  }
+  return null;
+}

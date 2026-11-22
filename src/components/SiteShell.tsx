@@ -20,7 +20,7 @@ export function SiteHeader() {
   const navItems = [
     { to: "/auctions", label: "Auctions", protected: true },
     { to: "/live", label: "Live Bidding", protected: true },
-    { to: "/dispatch", label: "Dispatch", protected: true },
+    { to: "/dispatch", label: "Dispatch", protected: false },
     { to: "/sell", label: "Sell", protected: true },
     { to: "/about", label: "About", protected: false },
   ];

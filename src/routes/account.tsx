@@ -3,9 +3,8 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { optimizeImageUrl } from "@/lib/format";
+import { formatBid, localArtworkImage, optimizeImageUrl, useLocalImageFallback } from "@/lib/format";
 import { getMyAccount } from "@/lib/auction.functions";
-import { formatBid } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/account")({
@@ -60,7 +59,7 @@ function AccountPage() {
           return (
             <Link key={b.id} to="/lot/$id" params={{ id: lot.id }} className="grid grid-cols-[80px_1fr_auto_auto] gap-6 items-center py-5 border-b border-border group">
               <div className="w-20 h-20 bg-muted overflow-hidden">
-                <img src={optimizeImageUrl(lot.image_url, 240)} alt={lot.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={optimizeImageUrl(lot.image_url, 240) || localArtworkImage(lot.lot_number)} alt={lot.title} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(event) => useLocalImageFallback(event, localArtworkImage(lot.lot_number))} />
               </div>
               <div>
                 <div className="font-serif text-lg">{lot.artist}</div>
