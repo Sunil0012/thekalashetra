@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { getLot, placeBid } from "@/lib/auction.functions";
-import { formatBid, formatCountdown, localArtworkImage, nextMinIncrement, optimizeImageUrl, useLocalImageFallback } from "@/lib/format";
+import { formatBid, formatCountdown, localArtworkImage, nextMinIncrement, optimizeImageUrl, setLocalImageFallback } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
 import { useNow } from "@/hooks/use-now";
 
@@ -112,7 +112,7 @@ function LotPage() {
             fetchPriority="high"
             decoding="async"
             className="w-full h-full object-cover"
-            onError={(event) => useLocalImageFallback(event, localArtworkImage(lot.lot_number))}
+            onError={(event) => setLocalImageFallback(event, localArtworkImage(lot.lot_number))}
           />
         </div>
 

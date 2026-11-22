@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { listLiveSlots } from "@/lib/auction.functions";
-import { formatCountdown, formatBid, localArtworkImage, optimizeImageUrl, useLocalImageFallback } from "@/lib/format";
+import { formatCountdown, formatBid, localArtworkImage, optimizeImageUrl, setLocalImageFallback } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -134,7 +134,7 @@ function SlotRow({ session, lots, state }: { session: any; lots: any[]; state: S
               <Link key={lot.id} to="/lot/$id" params={{ id: lot.id }} className="group shrink-0 w-[180px]">
                 {lot.image_url && (
                   <div className="aspect-[4/5] bg-muted overflow-hidden mb-3">
-                    <img src={optimizeImageUrl(lot.image_url, 360, 450) || localArtworkImage(lot.lot_number)} alt={`${lot.artist} by ${lot.title}`} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" onError={(event) => useLocalImageFallback(event, localArtworkImage(lot.lot_number))} />
+                    <img src={optimizeImageUrl(lot.image_url, 360, 450) || localArtworkImage(lot.lot_number)} alt={`${lot.artist} by ${lot.title}`} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" onError={(event) => setLocalImageFallback(event, localArtworkImage(lot.lot_number))} />
                   </div>
                 )}
                 <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Lot {lot.lot_number}</div>

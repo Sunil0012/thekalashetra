@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo } from "react";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { listDispatches } from "@/lib/ai.functions";
-import { localArtworkImage, useLocalImageFallback } from "@/lib/format";
+import { localArtworkImage, setLocalImageFallback } from "@/lib/format";
 
 export const Route = createFileRoute("/dispatch")({
   head: () => ({
@@ -139,7 +139,7 @@ function DispatchPage() {
                       decoding="async"
                       className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-[1.02]"
                       onError={(e) => {
-                        useLocalImageFallback(e, localArtworkImage(lead.imageIndex));
+                        setLocalImageFallback(e, localArtworkImage(lead.imageIndex));
                       }}
                     />
                   ) : (
@@ -176,7 +176,7 @@ function DispatchPage() {
                         height={800}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                         onError={(e) => {
-                          useLocalImageFallback(e, localArtworkImage(a.imageIndex));
+                          setLocalImageFallback(e, localArtworkImage(a.imageIndex));
                         }}
                       />
                     ) : (
@@ -213,7 +213,7 @@ function DispatchPage() {
                   height={800}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    useLocalImageFallback(e, localArtworkImage(open.imageIndex));
+                    setLocalImageFallback(e, localArtworkImage(open.imageIndex));
                   }}
                 />
               ) : (

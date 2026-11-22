@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
-import { formatBid, localArtworkImage, optimizeImageUrl, useLocalImageFallback } from "@/lib/format";
+import { formatBid, localArtworkImage, optimizeImageUrl, setLocalImageFallback } from "@/lib/format";
 import { getLot, recordPurchase } from "@/lib/auction.functions";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -223,7 +223,7 @@ function CheckoutPage() {
           <aside className="border border-border p-7">
             <div className="flex gap-5">
               <div className="w-24 h-24 bg-muted overflow-hidden shrink-0">
-                <img src={optimizeImageUrl(lot.image_url, 320) || localArtworkImage(lot.lot_number)} alt={lot.title} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(event) => useLocalImageFallback(event, localArtworkImage(lot.lot_number))} />
+                <img src={optimizeImageUrl(lot.image_url, 320) || localArtworkImage(lot.lot_number)} alt={lot.title} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(event) => setLocalImageFallback(event, localArtworkImage(lot.lot_number))} />
               </div>
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Lot {lot.lot_number}</div>

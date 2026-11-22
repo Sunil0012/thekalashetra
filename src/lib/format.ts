@@ -25,7 +25,7 @@ export function localArtworkImage(index: number | string | null | undefined = 1)
   return `/lots/lot-${String(imageNumber).padStart(2, "0")}.jpg`;
 }
 
-export function useLocalImageFallback(
+export function setLocalImageFallback(
   event: { currentTarget: HTMLImageElement },
   fallback: string,
 ): void {

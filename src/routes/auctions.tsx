@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader, SiteFooter } from "@/components/SiteShell";
 import { getCatalogue } from "@/lib/auction.functions";
-import { formatBid, formatCountdown, localArtworkImage, optimizeImageUrl, useLocalImageFallback } from "@/lib/format";
+import { formatBid, formatCountdown, localArtworkImage, optimizeImageUrl, setLocalImageFallback } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 
 type Search = { q?: string; cat?: string; sort?: string };
@@ -154,7 +154,7 @@ function AuctionsPage() {
                       width={1024}
                       height={1024}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                      onError={(event) => useLocalImageFallback(event, localArtworkImage(l.lot_number))}
+                      onError={(event) => setLocalImageFallback(event, localArtworkImage(l.lot_number))}
                     />
                     {l.status === "sold" && (
                       <div className="absolute top-3 left-3 bg-foreground text-background px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em]">Sold</div>
